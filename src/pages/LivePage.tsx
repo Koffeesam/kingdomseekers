@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Heart, MessageCircle, Send, ChevronDown, ChevronUp } from 'lucide-react';
+import ksfLogo from '@/assets/ksf-logo.png';
+
+const CHANNEL_ID = 'UCvHvwe3wVCEibxBpFEs8oqw';
 
 export default function LivePage() {
   const { teachings, setTeachings } = useApp();
@@ -17,15 +20,43 @@ export default function LivePage() {
     ));
   };
 
+  const addTeachingComment = (id: string) => {
+    const text = commentTexts[id]?.trim();
+    if (!text) return;
+    setTeachings(prev => prev.map(t =>
+      t.id === id ? {
+        ...t,
+        comments: [...t.comments, {
+          id: `tc${Date.now()}`,
+          userId: '1',
+          username: 'GraceWalker',
+          avatar: 'https://i.pravatar.cc/150?img=1',
+          text,
+          timestamp: 'just now',
+        }]
+      } : t
+    ));
+    setCommentTexts(prev => ({ ...prev, [id]: '' }));
+  };
+
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-20 relative">
+      {/* Background watermark */}
+      <img
+        src={ksfLogo}
+        alt=""
+        className="fixed inset-0 w-full h-full object-contain opacity-[0.03] pointer-events-none select-none scale-125 z-0"
+        aria-hidden="true"
+      />
+
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-lg mx-auto py-3 px-4">
-          <h1 className="text-lg font-display font-bold text-center text-foreground">Live Teachings</h1>
+        <div className="max-w-lg mx-auto flex items-center justify-center gap-2 py-3 px-4">
+          <img src={ksfLogo} alt="KSF" className="w-7 h-7" />
+          <h1 className="text-lg font-display font-bold text-foreground">Live Teachings</h1>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 pt-4">
+      <main className="relative z-10 max-w-lg mx-auto px-4 pt-4">
         {/* Live Stream Section */}
         <div className="feed-card mb-6">
           <div className="flex items-center gap-2 mb-3">
@@ -45,8 +76,8 @@ export default function LivePage() {
           {isLiveDay ? (
             <div className="rounded-xl overflow-hidden aspect-video bg-foreground/5">
               <iframe
-                src="https://www.youtube.com/embed/live_stream?channel=UC_channel_id"
-                title="Live Stream"
+                src={`https://www.youtube.com/embed/live_stream?channel=${CHANNEL_ID}`}
+                title="KSF Thika Road Live Stream"
                 className="w-full h-full"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -54,13 +85,21 @@ export default function LivePage() {
             </div>
           ) : (
             <div className="rounded-xl bg-muted flex flex-col items-center justify-center py-12 px-4 text-center">
-              <span className="text-4xl mb-3">📺</span>
+              <img src={ksfLogo} alt="" className="w-16 h-16 opacity-30 mb-3" />
               <p className="text-sm font-medium text-foreground">No live session today</p>
               <p className="text-xs text-muted-foreground mt-1">Live teachings are streamed on Fridays & Saturdays</p>
               <div className="flex gap-2 mt-3">
                 <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">Fri</span>
                 <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">Sat</span>
               </div>
+              <a
+                href="https://www.youtube.com/@ksfthikaroad"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 px-4 py-2 rounded-xl bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+              >
+                Visit YouTube Channel →
+              </a>
             </div>
           )}
         </div>
@@ -100,18 +139,28 @@ export default function LivePage() {
             </div>
 
             {expandedTeaching === teaching.id && (
-              <div className="mt-3 pt-3 border-t border-border">
+              <div className="mt-3 pt-3 border-t border-border space-y-3">
                 {teaching.comments.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-2">No comments yet. Be the first!</p>
                 )}
+                {teaching.comments.map(c => (
+                  <div key={c.id} className="flex gap-2">
+                    <img src={c.avatar} alt={c.username} className="w-7 h-7 rounded-full object-cover" />
+                    <div className="bg-muted rounded-xl px-3 py-2 flex-1">
+                      <p className="text-xs font-semibold text-foreground">{c.username}</p>
+                      <p className="text-xs text-foreground/80">{c.text}</p>
+                    </div>
+                  </div>
+                ))}
                 <div className="flex gap-2">
                   <input
                     value={commentTexts[teaching.id] || ''}
                     onChange={e => setCommentTexts(prev => ({ ...prev, [teaching.id]: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && addTeachingComment(teaching.id)}
                     placeholder="Add a comment..."
                     className="flex-1 bg-muted rounded-full px-4 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
                   />
-                  <button className="text-primary"><Send size={16} /></button>
+                  <button onClick={() => addTeachingComment(teaching.id)} className="text-primary"><Send size={16} /></button>
                 </div>
               </div>
             )}
