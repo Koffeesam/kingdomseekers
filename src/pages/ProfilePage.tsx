@@ -66,9 +66,9 @@ export default function ProfilePage() {
           <div className="feed-card mb-6">
             <div className="flex items-center gap-2 mb-3">
               <Megaphone size={18} className="text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">Promote Your Content</h3>
+              <h3 className="text-sm font-semibold text-foreground">Advertise Your Content</h3>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">Boost your testimonies to reach more believers. Ads appear on Fridays & Saturdays.</p>
+            <p className="text-xs text-muted-foreground mb-3">Place ads to reach more believers. Ads appear on Fridays & Saturdays.</p>
             <div className="grid grid-cols-2 gap-2">
               {adPackages.map(pkg => (
                 <div key={pkg.id} className="bg-muted rounded-xl p-3 text-center">
