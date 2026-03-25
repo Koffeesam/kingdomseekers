@@ -59,9 +59,9 @@ export const mockPosts: Post[] = [
 ];
 
 export const mockTeachings: Teaching[] = [
-  { id: 't1', title: 'The Power of Prayer in Difficult Seasons', youtubeId: 'dQw4w9WgXcQ', date: 'March 21, 2026', likes: 234, liked: false, comments: [] },
-  { id: 't2', title: 'Understanding God\'s Grace', youtubeId: 'dQw4w9WgXcQ', date: 'March 14, 2026', likes: 189, liked: false, comments: [] },
-  { id: 't3', title: 'Walking in Faith: A Practical Guide', youtubeId: 'dQw4w9WgXcQ', date: 'March 7, 2026', likes: 312, liked: false, comments: [] },
+  { id: 't1', title: 'The Power of Prayer in Difficult Seasons', youtubeId: 'XhxzFd962rI', date: 'March 21, 2026', likes: 234, liked: false, comments: [] },
+  { id: 't2', title: 'Understanding God\'s Grace', youtubeId: 'XhxzFd962rI', date: 'March 14, 2026', likes: 189, liked: false, comments: [] },
+  { id: 't3', title: 'Walking in Faith: A Practical Guide', youtubeId: 'XhxzFd962rI', date: 'March 7, 2026', likes: 312, liked: false, comments: [] },
 ];
 
 export const adPackages: AdPackage[] = [
