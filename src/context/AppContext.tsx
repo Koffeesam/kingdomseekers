@@ -32,6 +32,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [posts, setPosts] = useState<Post[]>(mockPosts);
   const [teachings, setTeachings] = useState<Teaching[]>(mockTeachings);
   const [stories, setStories] = useState<Story[]>(mockStories);
+  const [messages, setMessages] = useState<DirectMessage[]>(mockMessages);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -121,10 +122,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setStories(prev => prev.map(s => s.id === storyId ? { ...s, viewed: true } : s));
   };
 
+  const sendMessage = (toUserId: string, text: string) => {
+    const msg: DirectMessage = {
+      id: `m${Date.now()}`,
+      fromUserId: currentUser.id,
+      toUserId,
+      text,
+      createdAt: Date.now(),
+      read: true,
+    };
+    setMessages(prev => [...prev, msg]);
+  };
+
+  const markConversationRead = (otherUserId: string) => {
+    setMessages(prev => prev.map(m =>
+      m.fromUserId === otherUserId && m.toUserId === currentUser.id && !m.read
+        ? { ...m, read: true }
+        : m
+    ));
+  };
+
   return (
     <AppContext.Provider value={{
       posts, setPosts, users: mockUsers, teachings, setTeachings,
       stories, addStory, markStoryViewed,
+      messages, sendMessage, markConversationRead,
       user: currentUser, followedUsers, toggleFollow, toggleLike, addComment, addPost,
       isAuthenticated, login, logout,
     }}>
