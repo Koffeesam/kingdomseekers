@@ -10,6 +10,9 @@ import UploadPage from "./pages/UploadPage";
 import LivePage from "./pages/LivePage";
 import ProfilePage from "./pages/ProfilePage";
 import LoginPage from "./pages/LoginPage";
+import MessagesPage from "./pages/MessagesPage";
+import ChatPage from "./pages/ChatPage";
+import VideosPage from "./pages/VideosPage";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
@@ -31,8 +34,11 @@ function AppLayout() {
       <Routes>
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
         <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
+        <Route path="/videos" element={<RequireAuth><VideosPage /></RequireAuth>} />
         <Route path="/upload" element={<RequireAuth><UploadPage /></RequireAuth>} />
         <Route path="/live" element={<RequireAuth><LivePage /></RequireAuth>} />
+        <Route path="/messages" element={<RequireAuth><MessagesPage /></RequireAuth>} />
+        <Route path="/messages/:userId" element={<RequireAuth><ChatPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="/profile/:userId" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
