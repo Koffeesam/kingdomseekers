@@ -41,6 +41,17 @@ export interface Teaching {
   comments: Comment[];
 }
 
+export interface Story {
+  id: string;
+  userId: string;
+  username: string;
+  avatar: string;
+  content: string;
+  bgColor: string;
+  createdAt: number;
+  viewed: boolean;
+}
+
 export interface AdPackage {
   id: string;
   duration: string;
