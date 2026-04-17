@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { Post, User, Teaching, Story } from '@/types';
-import { mockPosts, mockUsers, mockTeachings, mockStories, currentUser } from '@/data/mockData';
+import { Post, User, Teaching, Story, DirectMessage } from '@/types';
+import { mockPosts, mockUsers, mockTeachings, mockStories, mockMessages, currentUser } from '@/data/mockData';
 
 interface AppContextType {
   posts: Post[];
@@ -17,6 +17,9 @@ interface AppContextType {
   toggleLike: (postId: string) => void;
   addComment: (postId: string, text: string) => void;
   addPost: (type: 'text' | 'video', content: string) => void;
+  messages: DirectMessage[];
+  sendMessage: (toUserId: string, text: string) => void;
+  markConversationRead: (otherUserId: string) => void;
   isAuthenticated: boolean;
   login: () => void;
   logout: () => void;
