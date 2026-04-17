@@ -1,10 +1,18 @@
-import { Post, User, Teaching, AdPackage, Story } from '@/types';
+import { Post, User, Teaching, AdPackage, Story, DirectMessage } from '@/types';
 
 const now = Date.now();
 export const mockStories: Story[] = [
   { id: 's1', userId: '2', username: 'FaithfulHeart', avatar: 'https://i.pravatar.cc/150?img=5', content: '"This is the day the Lord has made!" 🙌', bgColor: 'from-amber-500 to-orange-600', createdAt: now - 1000 * 60 * 30, viewed: false },
   { id: 's2', userId: '3', username: 'PraiseLifter', avatar: 'https://i.pravatar.cc/150?img=3', content: 'Worship night was glorious 🎵🔥', bgColor: 'from-purple-600 to-indigo-700', createdAt: now - 1000 * 60 * 90, viewed: false },
   { id: 's3', userId: '5', username: 'HopeAnchor', avatar: 'https://i.pravatar.cc/150?img=12', content: 'Praying for everyone reading this 🙏', bgColor: 'from-emerald-600 to-teal-700', createdAt: now - 1000 * 60 * 60 * 4, viewed: false },
+];
+
+export const mockMessages: DirectMessage[] = [
+  { id: 'm1', fromUserId: '2', toUserId: '1', text: 'Hey sister! Loved your testimony 🙏', createdAt: now - 1000 * 60 * 60 * 3, read: false },
+  { id: 'm2', fromUserId: '2', toUserId: '1', text: 'Can we pray together this week?', createdAt: now - 1000 * 60 * 60 * 3 + 5000, read: false },
+  { id: 'm3', fromUserId: '3', toUserId: '1', text: 'Blessings! Thank you for sharing 🎵', createdAt: now - 1000 * 60 * 60 * 26, read: true },
+  { id: 'm4', fromUserId: '1', toUserId: '3', text: 'Glory to God! Keep lifting Him up 🙌', createdAt: now - 1000 * 60 * 60 * 25, read: true },
+  { id: 'm5', fromUserId: '5', toUserId: '1', text: 'Amen to your prayer post 🕊️', createdAt: now - 1000 * 60 * 60 * 50, read: true },
 ];
 
 export const mockUsers: User[] = [

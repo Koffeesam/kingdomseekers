@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { Post, User, Teaching, Story } from '@/types';
-import { mockPosts, mockUsers, mockTeachings, mockStories, currentUser } from '@/data/mockData';
+import { Post, User, Teaching, Story, DirectMessage } from '@/types';
+import { mockPosts, mockUsers, mockTeachings, mockStories, mockMessages, currentUser } from '@/data/mockData';
 
 interface AppContextType {
   posts: Post[];
@@ -17,6 +17,9 @@ interface AppContextType {
   toggleLike: (postId: string) => void;
   addComment: (postId: string, text: string) => void;
   addPost: (type: 'text' | 'video', content: string) => void;
+  messages: DirectMessage[];
+  sendMessage: (toUserId: string, text: string) => void;
+  markConversationRead: (otherUserId: string) => void;
   isAuthenticated: boolean;
   login: () => void;
   logout: () => void;
@@ -29,6 +32,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [posts, setPosts] = useState<Post[]>(mockPosts);
   const [teachings, setTeachings] = useState<Teaching[]>(mockTeachings);
   const [stories, setStories] = useState<Story[]>(mockStories);
+  const [messages, setMessages] = useState<DirectMessage[]>(mockMessages);
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -118,10 +122,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setStories(prev => prev.map(s => s.id === storyId ? { ...s, viewed: true } : s));
   };
 
+  const sendMessage = (toUserId: string, text: string) => {
+    const msg: DirectMessage = {
+      id: `m${Date.now()}`,
+      fromUserId: currentUser.id,
+      toUserId,
+      text,
+      createdAt: Date.now(),
+      read: true,
+    };
+    setMessages(prev => [...prev, msg]);
+  };
+
+  const markConversationRead = (otherUserId: string) => {
+    setMessages(prev => prev.map(m =>
+      m.fromUserId === otherUserId && m.toUserId === currentUser.id && !m.read
+        ? { ...m, read: true }
+        : m
+    ));
+  };
+
   return (
     <AppContext.Provider value={{
       posts, setPosts, users: mockUsers, teachings, setTeachings,
       stories, addStory, markStoryViewed,
+      messages, sendMessage, markConversationRead,
       user: currentUser, followedUsers, toggleFollow, toggleLike, addComment, addPost,
       isAuthenticated, login, logout,
     }}>

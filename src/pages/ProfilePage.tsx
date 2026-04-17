@@ -1,5 +1,6 @@
 import { useApp } from '@/context/AppContext';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
+import { MessageCircle } from 'lucide-react';
 import FeedCard from '@/components/FeedCard';
 
 export default function ProfilePage() {
@@ -46,16 +47,25 @@ export default function ProfilePage() {
           </div>
 
           {!isOwnProfile && (
-            <button
-              onClick={() => toggleFollow(profileUser.id)}
-              className={`mt-4 px-8 py-2.5 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] ${
-                isFollowing
-                  ? 'bg-muted text-muted-foreground'
-                  : 'gold-gradient text-primary-foreground shadow-lg'
-              }`}
-            >
-              {isFollowing ? 'Unfollow' : 'Follow'}
-            </button>
+            <div className="flex gap-2 justify-center mt-4">
+              <button
+                onClick={() => toggleFollow(profileUser.id)}
+                className={`px-6 py-2.5 rounded-xl font-semibold text-sm transition-all active:scale-[0.98] ${
+                  isFollowing
+                    ? 'bg-muted text-muted-foreground'
+                    : 'gold-gradient text-primary-foreground shadow-lg'
+                }`}
+              >
+                {isFollowing ? 'Unfollow' : 'Follow'}
+              </button>
+              <Link
+                to={`/messages/${profileUser.id}`}
+                className="px-6 py-2.5 rounded-xl font-semibold text-sm bg-muted text-foreground hover:bg-muted/70 transition-all active:scale-[0.98] flex items-center gap-1.5"
+              >
+                <MessageCircle size={16} />
+                Message
+              </Link>
+            </div>
           )}
         </div>
 
