@@ -59,9 +59,11 @@ export const mockPosts: Post[] = [
 ];
 
 export const mockTeachings: Teaching[] = [
-  { id: 't1', title: 'The Power of Prayer in Difficult Seasons', youtubeId: 'XhxzFd962rI', date: 'March 21, 2026', likes: 234, liked: false, comments: [] },
-  { id: 't2', title: 'Understanding God\'s Grace', youtubeId: 'XhxzFd962rI', date: 'March 14, 2026', likes: 189, liked: false, comments: [] },
-  { id: 't3', title: 'Walking in Faith: A Practical Guide', youtubeId: 'XhxzFd962rI', date: 'March 7, 2026', likes: 312, liked: false, comments: [] },
+  { id: 't1', title: 'Why Settle For Less? || Pastor Essollom Karanja', youtubeId: 'Cbm-vowziF0', date: 'Recent', likes: 234, liked: false, comments: [] },
+  { id: 't2', title: 'When Idols are Worshipped || Pastor Essollom Karanja', youtubeId: '0kYO1UeZKxc', date: 'Recent', likes: 189, liked: false, comments: [] },
+  { id: 't3', title: 'Why We Need The Power of God as Believers || Pastor Essollom Karanja', youtubeId: '17OL3aU37gY', date: 'Recent', likes: 312, liked: false, comments: [] },
+  { id: 't4', title: 'Godly Marriage || Pastor Juliah Karanja', youtubeId: '7jwl1wIv0ng', date: 'Recent', likes: 276, liked: false, comments: [] },
+  { id: 't5', title: 'Do not give the devil a foothold', youtubeId: '8Wfzwhgr1oU', date: 'Recent', likes: 198, liked: false, comments: [] },
 ];
 
 export const adPackages: AdPackage[] = [

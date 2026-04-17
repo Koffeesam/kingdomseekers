@@ -1,8 +1,6 @@
 import { useApp } from '@/context/AppContext';
 import { useParams } from 'react-router-dom';
 import FeedCard from '@/components/FeedCard';
-import { adPackages } from '@/data/mockData';
-import { Megaphone } from 'lucide-react';
 
 export default function ProfilePage() {
   const { posts, users, user: currentUser, followedUsers, toggleFollow } = useApp();
@@ -60,29 +58,6 @@ export default function ProfilePage() {
             </button>
           )}
         </div>
-
-        {/* Promote Section (own profile) */}
-        {isOwnProfile && (
-          <div className="feed-card mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Megaphone size={18} className="text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">Advertise Your Content</h3>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">Place ads to reach more believers. Ads appear on Fridays & Saturdays.</p>
-            <div className="grid grid-cols-2 gap-2">
-              {adPackages.map(pkg => (
-                <div key={pkg.id} className="bg-muted rounded-xl p-3 text-center">
-                  <p className="text-xs font-medium text-foreground">{pkg.duration}</p>
-                  <p className="text-lg font-bold text-primary">KES {pkg.price}</p>
-                  <p className="text-[10px] text-muted-foreground">{pkg.description}</p>
-                  <button className="mt-2 w-full py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
-                    Coming Soon
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* User Posts */}
         <h3 className="text-base font-display font-bold text-foreground mb-3">
