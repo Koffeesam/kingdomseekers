@@ -1,4 +1,11 @@
-import { Post, User, Teaching, AdPackage } from '@/types';
+import { Post, User, Teaching, AdPackage, Story } from '@/types';
+
+const now = Date.now();
+export const mockStories: Story[] = [
+  { id: 's1', userId: '2', username: 'FaithfulHeart', avatar: 'https://i.pravatar.cc/150?img=5', content: '"This is the day the Lord has made!" 🙌', bgColor: 'from-amber-500 to-orange-600', createdAt: now - 1000 * 60 * 30, viewed: false },
+  { id: 's2', userId: '3', username: 'PraiseLifter', avatar: 'https://i.pravatar.cc/150?img=3', content: 'Worship night was glorious 🎵🔥', bgColor: 'from-purple-600 to-indigo-700', createdAt: now - 1000 * 60 * 90, viewed: false },
+  { id: 's3', userId: '5', username: 'HopeAnchor', avatar: 'https://i.pravatar.cc/150?img=12', content: 'Praying for everyone reading this 🙏', bgColor: 'from-emerald-600 to-teal-700', createdAt: now - 1000 * 60 * 60 * 4, viewed: false },
+];
 
 export const mockUsers: User[] = [
   { id: '1', username: 'GraceWalker', avatar: 'https://i.pravatar.cc/150?img=1', bio: 'Walking by faith, not by sight ✝️', followers: 1243, following: 89 },
