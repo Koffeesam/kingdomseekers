@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, Cross, Sparkles } from 'lucide-react';
+import { useApp } from '@/context/AppContext';
 import ksfLogo from '@/assets/ksf-logo.png';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useApp();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,7 +21,8 @@ export default function LoginPage() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      navigate('/');
+      login();
+      navigate('/', { replace: true });
     }, 900);
   };
 
@@ -141,21 +144,6 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-5">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">or</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="w-full py-3 rounded-2xl text-xs font-medium text-muted-foreground border border-border/60 hover:bg-muted/60 hover:text-foreground transition-colors"
-            >
-              Continue as guest
-            </button>
 
             <p className="text-xs text-muted-foreground text-center mt-5">
               {isSignUp ? 'Already part of the family?' : 'New to Kingdom Seekers?'}{' '}
