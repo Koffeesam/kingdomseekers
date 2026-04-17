@@ -58,3 +58,12 @@ export interface AdPackage {
   price: number;
   description: string;
 }
+
+export interface DirectMessage {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  text: string;
+  createdAt: number;
+  read: boolean;
+}
