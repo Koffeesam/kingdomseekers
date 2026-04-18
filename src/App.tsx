@@ -13,6 +13,11 @@ import LoginPage from "./pages/LoginPage";
 import MessagesPage from "./pages/MessagesPage";
 import ChatPage from "./pages/ChatPage";
 import VideosPage from "./pages/VideosPage";
+import BiblePage from "./pages/BiblePage";
+import MotivationPage from "./pages/MotivationPage";
+import PrayerPage from "./pages/PrayerPage";
+import SettingsPage from "./pages/SettingsPage";
+import HelpPage from "./pages/HelpPage";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
@@ -41,6 +46,11 @@ function AppLayout() {
         <Route path="/messages/:userId" element={<RequireAuth><ChatPage /></RequireAuth>} />
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="/profile/:userId" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+        <Route path="/bible" element={<RequireAuth><BiblePage /></RequireAuth>} />
+        <Route path="/motivation" element={<RequireAuth><MotivationPage /></RequireAuth>} />
+        <Route path="/prayer" element={<RequireAuth><PrayerPage /></RequireAuth>} />
+        <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+        <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!isLoginPage && isAuthenticated && <BottomNav />}

@@ -1,5 +1,6 @@
 import { useApp } from '@/context/AppContext';
 import FeedCard from '@/components/FeedCard';
+import TopNav from '@/components/TopNav';
 import ksfLogo from '@/assets/ksf-logo.png';
 
 export default function HomePage() {
@@ -17,11 +18,15 @@ export default function HomePage() {
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-lg mx-auto flex items-center justify-center py-3 px-4">
-          <img src={ksfLogo} alt="Kingdom Seekers" className="w-8 h-8" />
-          <h1 className="text-lg font-display font-bold ml-2 bg-gradient-to-r from-gold-dark to-primary bg-clip-text text-transparent">
-            Kingdom Seekers
-          </h1>
+        <div className="max-w-lg mx-auto flex items-center justify-between py-2 px-3">
+          <TopNav />
+          <div className="flex items-center gap-2">
+            <img src={ksfLogo} alt="Kingdom Seekers" className="w-7 h-7" />
+            <h1 className="text-base font-display font-bold bg-gradient-to-r from-gold-dark to-primary bg-clip-text text-transparent">
+              Kingdom Seekers
+            </h1>
+          </div>
+          <div className="w-9" />
         </div>
       </header>
 
