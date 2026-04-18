@@ -66,4 +66,5 @@ export interface DirectMessage {
   text: string;
   createdAt: number;
   read: boolean;
+  replyToId?: string;
 }

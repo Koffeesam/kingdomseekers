@@ -12,7 +12,7 @@ export default function LivePage() {
 
   const today = new Date();
   const dayOfWeek = today.getDay();
-  const isLiveDay = dayOfWeek === 5 || dayOfWeek === 6; // Fri or Sat
+  const isLiveDay = dayOfWeek === 5 || dayOfWeek === 0; // Fri or Sun
 
   const toggleTeachingLike = (id: string) => {
     setTeachings(prev => prev.map(t =>
@@ -87,10 +87,10 @@ export default function LivePage() {
             <div className="rounded-xl bg-muted flex flex-col items-center justify-center py-12 px-4 text-center">
               <img src={ksfLogo} alt="" className="w-16 h-16 opacity-30 mb-3" />
               <p className="text-sm font-medium text-foreground">No live session today</p>
-              <p className="text-xs text-muted-foreground mt-1">Live teachings are streamed on Fridays & Saturdays</p>
+              <p className="text-xs text-muted-foreground mt-1">Live teachings are streamed on Fridays & Sundays</p>
               <div className="flex gap-2 mt-3">
                 <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">Fri</span>
-                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">Sat</span>
+                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">Sun</span>
               </div>
               <a
                 href="https://www.youtube.com/@ksfthikaroad"
