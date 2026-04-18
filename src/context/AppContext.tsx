@@ -18,7 +18,8 @@ interface AppContextType {
   addComment: (postId: string, text: string) => void;
   addPost: (type: 'text' | 'video', content: string) => void;
   messages: DirectMessage[];
-  sendMessage: (toUserId: string, text: string) => void;
+  sendMessage: (toUserId: string, text: string, replyToId?: string) => void;
+  deleteMessage: (messageId: string) => void;
   markConversationRead: (otherUserId: string) => void;
   isAuthenticated: boolean;
   login: () => void;
@@ -122,16 +123,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setStories(prev => prev.map(s => s.id === storyId ? { ...s, viewed: true } : s));
   };
 
-  const sendMessage = (toUserId: string, text: string) => {
+  const sendMessage = (toUserId: string, text: string, replyToId?: string) => {
     const msg: DirectMessage = {
-      id: `m${Date.now()}`,
+      id: `m${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
       fromUserId: currentUser.id,
       toUserId,
       text,
       createdAt: Date.now(),
       read: true,
+      replyToId,
     };
     setMessages(prev => [...prev, msg]);
+  };
+
+  const deleteMessage = (messageId: string) => {
+    setMessages(prev => prev.filter(m => m.id !== messageId));
   };
 
   const markConversationRead = (otherUserId: string) => {
@@ -146,7 +152,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       posts, setPosts, users: mockUsers, teachings, setTeachings,
       stories, addStory, markStoryViewed,
-      messages, sendMessage, markConversationRead,
+      messages, sendMessage, deleteMessage, markConversationRead,
       user: currentUser, followedUsers, toggleFollow, toggleLike, addComment, addPost,
       isAuthenticated, login, logout,
     }}>
