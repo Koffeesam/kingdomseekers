@@ -18,6 +18,7 @@ import MotivationPage from "./pages/MotivationPage";
 import PrayerPage from "./pages/PrayerPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
+import StoriesPage from "./pages/StoriesPage";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
