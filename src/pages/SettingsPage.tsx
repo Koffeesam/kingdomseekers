@@ -18,9 +18,9 @@ export default function SettingsPage() {
     document.documentElement.classList.toggle('dark', dark);
   }, [dark]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
   };
 
   return (
