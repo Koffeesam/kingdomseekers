@@ -59,6 +59,7 @@ function AppLayout() {
         <Route path="/prayer" element={<RequireAuth><PrayerPage /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
         <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
+        <Route path="/stories" element={<RequireAuth><StoriesPage /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!isLoginPage && isAuthenticated && <BottomNav />}
