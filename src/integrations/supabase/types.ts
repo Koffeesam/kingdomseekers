@@ -16,6 +16,10 @@ export type Database = {
     Tables: {
       direct_messages: {
         Row: {
+          attachment_name: string | null
+          attachment_size: number | null
+          attachment_type: string | null
+          attachment_url: string | null
           created_at: string
           from_user_id: string
           id: string
@@ -25,6 +29,10 @@ export type Database = {
           to_user_id: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           created_at?: string
           from_user_id: string
           id?: string
@@ -34,6 +42,10 @@ export type Database = {
           to_user_id: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
+          attachment_url?: string | null
           created_at?: string
           from_user_id?: string
           id?: string
@@ -84,6 +96,65 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      stories: {
+        Row: {
+          bg_color: string
+          content: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          media_type: string
+          media_url: string | null
+          user_id: string
+        }
+        Insert: {
+          bg_color?: string
+          content?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string | null
+          user_id: string
+        }
+        Update: {
+          bg_color?: string
+          content?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      story_views: {
+        Row: {
+          story_id: string
+          viewed_at: string
+          viewer_id: string
+        }
+        Insert: {
+          story_id: string
+          viewed_at?: string
+          viewer_id: string
+        }
+        Update: {
+          story_id?: string
+          viewed_at?: string
+          viewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_views_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
