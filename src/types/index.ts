@@ -48,7 +48,10 @@ export interface Story {
   avatar: string;
   content: string;
   bgColor: string;
+  mediaUrl?: string;
+  mediaType: 'text' | 'image';
   createdAt: number;
+  expiresAt: number;
   viewed: boolean;
 }
 
@@ -59,6 +62,8 @@ export interface AdPackage {
   description: string;
 }
 
+export type DMAttachmentType = 'image' | 'file' | 'audio';
+
 export interface DirectMessage {
   id: string;
   fromUserId: string;
@@ -67,4 +72,8 @@ export interface DirectMessage {
   createdAt: number;
   read: boolean;
   replyToId?: string;
+  attachmentUrl?: string;
+  attachmentType?: DMAttachmentType;
+  attachmentName?: string;
+  attachmentSize?: number;
 }
