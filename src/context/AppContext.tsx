@@ -28,7 +28,7 @@ interface AppContextType {
   fetchProfileById: (userId: string) => Promise<User | null>;
   toggleLike: (postId: string) => void;
   addComment: (postId: string, text: string) => void;
-  addPost: (type: 'text' | 'video', content: string) => void;
+  addPost: (type: 'text' | 'video', content: string, videoUrl?: string) => void;
   messages: DirectMessage[];
   sendMessage: (toUserId: string, opts: SendMessageOptions) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
