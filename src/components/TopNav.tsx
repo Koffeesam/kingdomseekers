@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, BookOpen, MessageCircle, Sparkles, HandHeart, Settings, HelpCircle, LogOut, Camera } from 'lucide-react';
+import { Menu, BookOpen, MessageCircle, Sparkles, HandHeart, Settings, HelpCircle, LogOut, Camera, Calendar } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
@@ -10,6 +10,7 @@ const menuItems = [
   { to: '/messages', icon: MessageCircle, label: 'Messages' },
   { to: '/stories', icon: Camera, label: 'Stories' },
   { to: '/bible', icon: BookOpen, label: 'Bible' },
+  { to: '/events', icon: Calendar, label: 'Events' },
   { to: '/motivation', icon: Sparkles, label: 'Daily Motivation' },
   { to: '/prayer', icon: HandHeart, label: "Today's Prayer" },
   { to: '/settings', icon: Settings, label: 'Settings' },
