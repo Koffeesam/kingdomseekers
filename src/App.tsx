@@ -19,6 +19,7 @@ import PrayerPage from "./pages/PrayerPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
 import StoriesPage from "./pages/StoriesPage";
+import EventsPage from "./pages/EventsPage";
 import NotFound from "./pages/NotFound";
 import { ReactNode } from "react";
 
@@ -62,6 +63,7 @@ function AppLayout() {
         <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
         <Route path="/help" element={<RequireAuth><HelpPage /></RequireAuth>} />
         <Route path="/stories" element={<RequireAuth><StoriesPage /></RequireAuth>} />
+        <Route path="/events" element={<RequireAuth><EventsPage /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!hideBottomNav && isAuthenticated && <BottomNav />}
