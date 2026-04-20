@@ -22,7 +22,10 @@ interface AppContextType {
   markStoryViewed: (storyId: string) => Promise<void>;
   user: User;
   followedUsers: Set<string>;
-  toggleFollow: (userId: string) => void;
+  followerCounts: Record<string, number>;
+  followingCounts: Record<string, number>;
+  toggleFollow: (userId: string) => Promise<void>;
+  fetchProfileById: (userId: string) => Promise<User | null>;
   toggleLike: (postId: string) => void;
   addComment: (postId: string, text: string) => void;
   addPost: (type: 'text' | 'video', content: string) => void;
