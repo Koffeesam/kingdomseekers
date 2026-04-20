@@ -1,22 +1,84 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Camera, FileText, CheckCircle } from 'lucide-react';
+import { Camera, FileText, CheckCircle, Video, Loader2, X, Upload as UploadIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
 
 export default function UploadPage() {
-  const { addPost } = useApp();
+  const { addPost, session } = useApp();
   const navigate = useNavigate();
   const [mode, setMode] = useState<'text' | 'video'>('text');
   const [content, setContent] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = () => {
-    if (!content.trim()) return;
-    addPost(mode, content.trim());
+  const handleVideoSelected = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('video/')) {
+      toast.error('Please select a video file');
+      return;
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      toast.error('Video must be under 100 MB');
+      return;
+    }
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
+  };
+
+  const clearVideo = () => {
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    setVideoFile(null);
+    setVideoPreview(null);
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSubmit = async () => {
+    if (mode === 'text') {
+      if (!content.trim()) return;
+      addPost('text', content.trim());
+      finish();
+      return;
+    }
+
+    // video mode
+    if (!videoFile) { toast.error('Please record or pick a video first'); return; }
+    if (!session?.user) { toast.error('You need to be signed in'); return; }
+
+    try {
+      setUploading(true);
+      const ext = videoFile.name.split('.').pop()?.toLowerCase() || 'mp4';
+      const path = `${session.user.id}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from('testimony-videos')
+        .upload(path, videoFile, { contentType: videoFile.type, upsert: false });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('testimony-videos').getPublicUrl(path);
+      addPost('video', content.trim(), publicUrl);
+      finish();
+    } catch (e: any) {
+      console.error('upload error', e);
+      toast.error(e?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const finish = () => {
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
       setContent('');
+      clearVideo();
       navigate('/');
     }, 1500);
   };
@@ -42,7 +104,6 @@ export default function UploadPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-6">
-        {/* Mode Toggle */}
         <div className="flex gap-3 mb-6">
           <button
             onClick={() => setMode('text')}
@@ -58,7 +119,7 @@ export default function UploadPage() {
               mode === 'video' ? 'gold-gradient text-primary-foreground shadow-lg' : 'bg-muted text-muted-foreground'
             }`}
           >
-            <Camera size={18} /> Video
+            <Video size={18} /> Video
           </button>
         </div>
 
@@ -73,33 +134,80 @@ export default function UploadPage() {
           />
         ) : (
           <div className="space-y-4">
-            <div className="bg-card border border-border rounded-2xl p-8 flex flex-col items-center justify-center text-center">
-              <Camera size={48} className="text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground">Camera recording will be available with backend integration.</p>
-              <p className="text-xs text-muted-foreground mt-1">For now, write a caption for your video testimony.</p>
-            </div>
+            {videoPreview ? (
+              <div className="relative bg-card border border-border rounded-2xl overflow-hidden">
+                <video src={videoPreview} controls className="w-full max-h-[60vh] bg-black" />
+                <button
+                  onClick={clearVideo}
+                  className="absolute top-2 right-2 bg-background/80 hover:bg-background text-foreground rounded-full p-1.5 backdrop-blur"
+                  aria-label="Remove video"
+                >
+                  <X size={16} />
+                </button>
+                <div className="px-3 py-2 text-xs text-muted-foreground truncate">
+                  {videoFile?.name} · {videoFile ? (videoFile.size / (1024 * 1024)).toFixed(1) : '0'} MB
+                </div>
+              </div>
+            ) : (
+              <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center gap-3">
+                <Camera size={40} className="text-primary" />
+                <p className="text-sm text-foreground font-medium">Record or upload a short video testimony</p>
+                <p className="text-xs text-muted-foreground">Up to 100 MB · MP4, WebM, or MOV</p>
+                <div className="flex gap-2 w-full mt-2">
+                  <button
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl gold-gradient text-primary-foreground font-medium text-sm shadow-lg active:scale-[0.98]"
+                  >
+                    <Camera size={16} /> Record
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-muted text-foreground font-medium text-sm active:scale-[0.98]"
+                  >
+                    <UploadIcon size={16} /> Upload
+                  </button>
+                </div>
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="video/*"
+                  capture="user"
+                  className="hidden"
+                  onChange={e => handleVideoSelected(e.target.files?.[0] ?? null)}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={e => handleVideoSelected(e.target.files?.[0] ?? null)}
+                />
+              </div>
+            )}
+
             <textarea
               value={content}
               onChange={e => setContent(e.target.value)}
-              placeholder="Add a caption for your video..."
-              rows={4}
+              placeholder="Add a caption for your video (optional)..."
+              rows={3}
               maxLength={500}
               className="w-full bg-card border border-border rounded-2xl p-4 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground mt-2 text-right">{content.length}/{mode === 'text' ? 1000 : 500}</p>
+        <p className="text-xs text-muted-foreground mt-2 text-right">
+          {content.length}/{mode === 'text' ? 1000 : 500}
+        </p>
 
         <button
           onClick={handleSubmit}
-          disabled={!content.trim()}
-          className="w-full mt-4 py-3.5 rounded-xl font-semibold text-sm gold-gradient text-primary-foreground shadow-lg disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98]"
+          disabled={uploading || (mode === 'text' ? !content.trim() : !videoFile)}
+          className="w-full mt-4 py-3.5 rounded-xl font-semibold text-sm gold-gradient text-primary-foreground shadow-lg disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         >
-          Share Testimony ✝️
+          {uploading ? (<><Loader2 size={16} className="animate-spin" /> Uploading…</>) : <>Share Testimony ✝️</>}
         </button>
 
-        {/* Content Guidelines */}
         <div className="mt-6 bg-muted/50 rounded-xl p-4">
           <h3 className="text-xs font-semibold text-foreground mb-2">📋 Content Guidelines</h3>
           <ul className="text-xs text-muted-foreground space-y-1">

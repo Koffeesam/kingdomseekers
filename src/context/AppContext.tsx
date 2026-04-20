@@ -22,10 +22,13 @@ interface AppContextType {
   markStoryViewed: (storyId: string) => Promise<void>;
   user: User;
   followedUsers: Set<string>;
-  toggleFollow: (userId: string) => void;
+  followerCounts: Record<string, number>;
+  followingCounts: Record<string, number>;
+  toggleFollow: (userId: string) => Promise<void>;
+  fetchProfileById: (userId: string) => Promise<User | null>;
   toggleLike: (postId: string) => void;
   addComment: (postId: string, text: string) => void;
-  addPost: (type: 'text' | 'video', content: string) => void;
+  addPost: (type: 'text' | 'video', content: string, videoUrl?: string) => void;
   messages: DirectMessage[];
   sendMessage: (toUserId: string, opts: SendMessageOptions) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
@@ -214,9 +217,75 @@ export function AppProvider({ children }: { children: ReactNode }) {
     bio: '', followers: 0, following: 0,
   };
 
-  const toggleFollow = (userId: string) => {
-    setFollowedUsers(prev => { const n = new Set(prev); n.has(userId) ? n.delete(userId) : n.add(userId); return n; });
+  // followers map: { [userId]: count } based on follows table
+  const [followerCounts, setFollowerCounts] = useState<Record<string, number>>({});
+  const [followingCounts, setFollowingCounts] = useState<Record<string, number>>({});
+
+  // Load my follows + global follow counts
+  const loadFollows = useCallback(async (uid: string) => {
+    const [{ data: mine }, { data: all }] = await Promise.all([
+      supabase.from('follows').select('following_id').eq('follower_id', uid),
+      supabase.from('follows').select('follower_id, following_id'),
+    ]);
+    setFollowedUsers(new Set((mine ?? []).map(r => r.following_id)));
+    const followers: Record<string, number> = {};
+    const following: Record<string, number> = {};
+    (all ?? []).forEach(r => {
+      followers[r.following_id] = (followers[r.following_id] ?? 0) + 1;
+      following[r.follower_id] = (following[r.follower_id] ?? 0) + 1;
+    });
+    setFollowerCounts(followers);
+    setFollowingCounts(following);
+  }, []);
+
+  useEffect(() => {
+    if (!session?.user) { setFollowedUsers(new Set()); setFollowerCounts({}); setFollowingCounts({}); return; }
+    loadFollows(session.user.id);
+    const ch = supabase.channel('follows-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'follows' }, () => loadFollows(session.user.id))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [session, loadFollows]);
+
+  const toggleFollow = async (userId: string) => {
+    if (!session?.user || userId === session.user.id) return;
+    const isFollowing = followedUsers.has(userId);
+    // Optimistic update
+    setFollowedUsers(prev => { const n = new Set(prev); isFollowing ? n.delete(userId) : n.add(userId); return n; });
+    setFollowerCounts(prev => ({ ...prev, [userId]: Math.max(0, (prev[userId] ?? 0) + (isFollowing ? -1 : 1)) }));
+    setFollowingCounts(prev => ({ ...prev, [session.user.id]: Math.max(0, (prev[session.user.id] ?? 0) + (isFollowing ? -1 : 1)) }));
+    if (isFollowing) {
+      const { error } = await supabase.from('follows').delete()
+        .eq('follower_id', session.user.id).eq('following_id', userId);
+      if (error) { console.error('unfollow error', error); loadFollows(session.user.id); }
+    } else {
+      const { error } = await supabase.from('follows').insert({ follower_id: session.user.id, following_id: userId });
+      if (error) { console.error('follow error', error); loadFollows(session.user.id); }
+    }
   };
+
+  // Fetch a single profile by id (for visiting profiles not yet in cache)
+  const fetchProfileById = async (userId: string): Promise<User | null> => {
+    const cached = profiles.find(p => p.id === userId);
+    if (cached) return cached;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('user_id, username, display_name, bio, avatar_url')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const u: User = {
+      id: data.user_id,
+      username: data.username,
+      avatar: data.avatar_url || FALLBACK_AVATAR,
+      bio: data.bio || '',
+      followers: 0,
+      following: 0,
+    };
+    setProfiles(prev => prev.some(p => p.id === u.id) ? prev : [...prev, u]);
+    return u;
+  };
+
   const toggleLike = (postId: string) => {
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
   };
@@ -226,10 +295,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avatar: fallbackUser.avatar, text, timestamp: 'just now',
     }] } : p));
   };
-  const addPost = (type: 'text' | 'video', content: string) => {
+  const addPost = (type: 'text' | 'video', content: string, videoUrl?: string) => {
     setPosts(prev => [{
       id: `p${Date.now()}`, userId: fallbackUser.id, username: fallbackUser.username, avatar: fallbackUser.avatar,
-      type, content, likes: 0, liked: false, comments: [], timestamp: 'just now',
+      type, content, videoUrl, likes: 0, liked: false, comments: [], timestamp: 'just now',
     }, ...prev]);
   };
 
@@ -295,7 +364,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       posts, setPosts, users, teachings, setTeachings,
       stories, addStory, deleteStory, markStoryViewed,
       messages, sendMessage, deleteMessage, markConversationRead,
-      user: fallbackUser, followedUsers, toggleFollow, toggleLike, addComment, addPost,
+      user: fallbackUser, followedUsers, followerCounts, followingCounts, toggleFollow, fetchProfileById, toggleLike, addComment, addPost,
       isAuthenticated: !!session, authReady, session, logout,
     }}>
       {children}
