@@ -295,10 +295,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avatar: fallbackUser.avatar, text, timestamp: 'just now',
     }] } : p));
   };
-  const addPost = (type: 'text' | 'video', content: string) => {
+  const addPost = (type: 'text' | 'video', content: string, videoUrl?: string) => {
     setPosts(prev => [{
       id: `p${Date.now()}`, userId: fallbackUser.id, username: fallbackUser.username, avatar: fallbackUser.avatar,
-      type, content, likes: 0, liked: false, comments: [], timestamp: 'just now',
+      type, content, videoUrl, likes: 0, liked: false, comments: [], timestamp: 'just now',
     }, ...prev]);
   };
 
