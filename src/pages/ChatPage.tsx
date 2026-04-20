@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useCall } from '@/components/CallManager';
 import type { DirectMessage, DMAttachmentType } from '@/types';
 
 function timeLabel(ts: number) {
@@ -36,11 +37,11 @@ function formatBytes(b?: number) {
 export default function ChatPage() {
   const { userId } = useParams();
   const { messages, users, user, sendMessage, deleteMessage, markConversationRead, session } = useApp();
+  const { startCall } = useCall();
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [forwardMsgId, setForwardMsgId] = useState<string | null>(null);
   const [reportMsgId, setReportMsgId] = useState<string | null>(null);
-  const [callType, setCallType] = useState<'voice' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -169,8 +170,8 @@ export default function ChatPage() {
               <p className="text-[11px] text-emerald-600 font-medium">Active now</p>
             </div>
           </Link>
-          <button onClick={() => setCallType('voice')} className="p-2 rounded-full hover:bg-secondary text-primary" aria-label="Voice call"><Phone size={18} /></button>
-          <button onClick={() => setCallType('video')} className="p-2 rounded-full hover:bg-secondary text-primary" aria-label="Video call"><Video size={18} /></button>
+          <button onClick={() => startCall(other, 'voice')} className="p-2 rounded-full hover:bg-secondary text-primary" aria-label="Voice call"><Phone size={18} /></button>
+          <button onClick={() => startCall(other, 'video')} className="p-2 rounded-full hover:bg-secondary text-primary" aria-label="Video call"><Video size={18} /></button>
         </div>
       </header>
 
@@ -356,20 +357,6 @@ export default function ChatPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Calls "coming soon" dialog */}
-      <Dialog open={!!callType} onOpenChange={(o) => !o && setCallType(null)}>
-        <DialogContent className="max-w-sm text-center">
-          <DialogHeader>
-            <div className="w-16 h-16 mx-auto rounded-full gold-gradient flex items-center justify-center mb-2">
-              {callType === 'video' ? <Video className="h-7 w-7 text-primary-foreground" /> : <Phone className="h-7 w-7 text-primary-foreground" />}
-            </div>
-            <DialogTitle className="text-center">{callType === 'video' ? 'Video' : 'Voice'} calls coming soon</DialogTitle>
-            <DialogDescription className="text-center">
-              We're building Christ-centered {callType} calling so you can pray and fellowship live with other believers. Stay tuned 🙏
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
