@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider, useApp } from "@/context/AppContext";
 import BottomNav from "@/components/BottomNav";
+import { CallManager } from "@/components/CallManager";
 import HomePage from "./pages/HomePage";
 import UploadPage from "./pages/UploadPage";
 import LivePage from "./pages/LivePage";
@@ -46,7 +47,7 @@ function AppLayout() {
   const hideBottomNav = isLoginPage || isChatPage;
 
   return (
-    <>
+    <CallManager>
       <Routes>
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
         <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
@@ -67,7 +68,7 @@ function AppLayout() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!hideBottomNav && isAuthenticated && <BottomNav />}
-    </>
+    </CallManager>
   );
 }
 
