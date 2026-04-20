@@ -155,7 +155,7 @@ export default function ChatPage() {
   let lastDay = '';
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="flex flex-col bg-background overflow-hidden" style={{ height: '100dvh' }}>
       <header className="shrink-0 bg-background/95 backdrop-blur-lg border-b border-border">
         <div className="max-w-2xl mx-auto flex items-center gap-3 py-2.5 px-3">
           <Link to="/messages" className="p-2 -ml-1 rounded-full hover:bg-secondary text-foreground"><ArrowLeft size={20} /></Link>

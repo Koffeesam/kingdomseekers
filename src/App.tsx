@@ -41,6 +41,8 @@ function AppLayout() {
   const location = useLocation();
   const { isAuthenticated } = useApp();
   const isLoginPage = location.pathname === '/login';
+  const isChatPage = /^\/messages\/[^/]+/.test(location.pathname);
+  const hideBottomNav = isLoginPage || isChatPage;
 
   return (
     <>
@@ -62,7 +64,7 @@ function AppLayout() {
         <Route path="/stories" element={<RequireAuth><StoriesPage /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      {!isLoginPage && isAuthenticated && <BottomNav />}
+      {!hideBottomNav && isAuthenticated && <BottomNav />}
     </>
   );
 }
