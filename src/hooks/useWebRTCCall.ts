@@ -126,35 +126,47 @@ export function useWebRTCCall({ callId, myUserId, otherUserId, role, callType, o
           }
         };
 
+        // Handler shared between realtime + initial fetch (de-duped by signal id)
+        const seenSignalIds = new Set<string>();
+        const handleSignal = async (sig: { id?: string; signal_type: string; from_user_id: string; payload: unknown }) => {
+          if (sig.from_user_id === myUserId) return;
+          if (sig.id) {
+            if (seenSignalIds.has(sig.id)) return;
+            seenSignalIds.add(sig.id);
+          }
+          try {
+            if (sig.signal_type === 'offer') {
+              await pc.setRemoteDescription(new RTCSessionDescription(sig.payload as RTCSessionDescriptionInit));
+              remoteDescSet.current = true;
+              for (const c of pendingCandidates.current) await pc.addIceCandidate(c);
+              pendingCandidates.current = [];
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+              await sendSignal('answer', answer);
+            } else if (sig.signal_type === 'answer') {
+              if (pc.signalingState === 'have-local-offer') {
+                await pc.setRemoteDescription(new RTCSessionDescription(sig.payload as RTCSessionDescriptionInit));
+                remoteDescSet.current = true;
+                for (const c of pendingCandidates.current) await pc.addIceCandidate(c);
+                pendingCandidates.current = [];
+              }
+            } else if (sig.signal_type === 'ice-candidate') {
+              const candidate = sig.payload as RTCIceCandidateInit;
+              if (remoteDescSet.current) await pc.addIceCandidate(candidate);
+              else pendingCandidates.current.push(candidate);
+            }
+          } catch (err) {
+            console.error('handleSignal error', sig.signal_type, err);
+          }
+        };
+
         // 3. Subscribe to signals from the other peer
         const channel = supabase
           .channel(`call-${callId}`)
           .on(
             'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `call_id=eq.${callId}` },
-            async (payload) => {
-              const sig = payload.new as { signal_type: string; from_user_id: string; payload: unknown };
-              if (sig.from_user_id === myUserId) return;
-
-              if (sig.signal_type === 'offer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(sig.payload as RTCSessionDescriptionInit));
-                remoteDescSet.current = true;
-                for (const c of pendingCandidates.current) await pc.addIceCandidate(c);
-                pendingCandidates.current = [];
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                await sendSignal('answer', answer);
-              } else if (sig.signal_type === 'answer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(sig.payload as RTCSessionDescriptionInit));
-                remoteDescSet.current = true;
-                for (const c of pendingCandidates.current) await pc.addIceCandidate(c);
-                pendingCandidates.current = [];
-              } else if (sig.signal_type === 'ice-candidate') {
-                const candidate = sig.payload as RTCIceCandidateInit;
-                if (remoteDescSet.current) await pc.addIceCandidate(candidate);
-                else pendingCandidates.current.push(candidate);
-              }
-            },
+            (payload) => { handleSignal(payload.new as any); },
           )
           .on(
             'postgres_changes',
@@ -168,18 +180,31 @@ export function useWebRTCCall({ callId, myUserId, otherUserId, role, callType, o
               }
             },
           )
-          .subscribe();
+          .subscribe(async (subStatus) => {
+            if (subStatus !== 'SUBSCRIBED') return;
+
+            // Drain any signals that were inserted before we subscribed
+            // (critical for the callee, who only joins after accepting)
+            const { data: existing } = await supabase
+              .from('call_signals')
+              .select('id, signal_type, from_user_id, payload')
+              .eq('call_id', callId)
+              .order('created_at', { ascending: true });
+            for (const s of existing ?? []) {
+              await handleSignal(s as any);
+            }
+
+            // 4. Caller creates offer ONLY after channel is ready,
+            //    so the callee's drain-on-subscribe will pick it up.
+            if (role === 'caller' && !pc.localDescription) {
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+              await sendSignal('offer', offer);
+            }
+          });
         channelRef.current = channel;
 
-        // 4. Caller creates offer immediately; callee waits for offer
-        if (role === 'caller') {
-          setStatus('connecting');
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          await sendSignal('offer', offer);
-        } else {
-          setStatus('connecting');
-        }
+        setStatus('connecting');
       } catch (err) {
         console.error('WebRTC setup error', err);
         endCall();
