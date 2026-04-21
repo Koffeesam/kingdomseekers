@@ -327,7 +327,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (patch: { username?: string; bio?: string; avatarUrl?: string }) => {
     if (!session?.user) return;
-    const update: Record<string, any> = { updated_at: new Date().toISOString() };
+    const update: { username?: string; bio?: string; avatar_url?: string; updated_at: string } = {
+      updated_at: new Date().toISOString(),
+    };
     if (patch.username !== undefined) update.username = patch.username;
     if (patch.bio !== undefined) update.bio = patch.bio;
     if (patch.avatarUrl !== undefined) update.avatar_url = patch.avatarUrl;
