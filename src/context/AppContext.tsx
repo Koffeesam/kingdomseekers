@@ -26,9 +26,10 @@ interface AppContextType {
   followingCounts: Record<string, number>;
   toggleFollow: (userId: string) => Promise<void>;
   fetchProfileById: (userId: string) => Promise<User | null>;
-  toggleLike: (postId: string) => void;
-  addComment: (postId: string, text: string) => void;
-  addPost: (type: 'text' | 'video', content: string, videoUrl?: string, meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }) => void;
+  toggleLike: (postId: string) => Promise<void>;
+  addComment: (postId: string, text: string) => Promise<void>;
+  addPost: (type: 'text' | 'video', content: string, videoUrl?: string, meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }) => Promise<void>;
+  deletePost: (postId: string) => Promise<void>;
   updateProfile: (patch: { username?: string; bio?: string; avatarUrl?: string }) => Promise<void>;
   uploadAvatar: (file: File) => Promise<string>;
   messages: DirectMessage[];
