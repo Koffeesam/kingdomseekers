@@ -153,6 +153,103 @@ export type Database = {
         }
         Relationships: []
       }
+      post_comments: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          text: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          likes: number
+          type: string
+          updated_at: string
+          user_id: string
+          video_category: string | null
+          video_duration: number | null
+          video_url: string | null
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          likes?: number
+          type: string
+          updated_at?: string
+          user_id: string
+          video_category?: string | null
+          video_duration?: number | null
+          video_url?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          likes?: number
+          type?: string
+          updated_at?: string
+          user_id?: string
+          video_category?: string | null
+          video_duration?: number | null
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

@@ -26,9 +26,10 @@ interface AppContextType {
   followingCounts: Record<string, number>;
   toggleFollow: (userId: string) => Promise<void>;
   fetchProfileById: (userId: string) => Promise<User | null>;
-  toggleLike: (postId: string) => void;
-  addComment: (postId: string, text: string) => void;
-  addPost: (type: 'text' | 'video', content: string, videoUrl?: string, meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }) => void;
+  toggleLike: (postId: string) => Promise<void>;
+  addComment: (postId: string, text: string) => Promise<void>;
+  addPost: (type: 'text' | 'video', content: string, videoUrl?: string, meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }) => Promise<void>;
+  deletePost: (postId: string) => Promise<void>;
   updateProfile: (patch: { username?: string; bio?: string; avatarUrl?: string }) => Promise<void>;
   uploadAvatar: (file: File) => Promise<string>;
   messages: DirectMessage[];
@@ -96,6 +97,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     loadProfiles(session.user.id);
   }, [session, loadProfiles]);
+
+  // ---- Load posts (with likes + comments) + realtime ----
+  const mapPost = useCallback((row: any, profilesList: User[], myUid: string | null, likedSet: Set<string>, commentsByPost: Map<string, any[]>): Post => {
+    const author = profilesList.find(u => u.id === row.user_id);
+    const cs = commentsByPost.get(row.id) ?? [];
+    return {
+      id: row.id,
+      userId: row.user_id,
+      username: author?.username ?? 'believer',
+      avatar: author?.avatar ?? FALLBACK_AVATAR,
+      type: row.type,
+      content: row.content ?? '',
+      videoUrl: row.video_url ?? undefined,
+      videoCategory: row.video_category ?? undefined,
+      videoDuration: row.video_duration ?? undefined,
+      likes: row.likes ?? 0,
+      liked: !!myUid && likedSet.has(row.id),
+      comments: cs.map(c => {
+        const cAuthor = profilesList.find(u => u.id === c.user_id);
+        return {
+          id: c.id,
+          userId: c.user_id,
+          username: cAuthor?.username ?? 'believer',
+          avatar: cAuthor?.avatar ?? FALLBACK_AVATAR,
+          text: c.text,
+          timestamp: new Date(c.created_at).toLocaleString(),
+        };
+      }),
+      timestamp: new Date(row.created_at).toLocaleString(),
+    };
+  }, []);
+
+  const reloadPosts = useCallback(async (uid: string | null, profilesList: User[]) => {
+    const [{ data: postsRows }, { data: likesRows }, { data: commentsRows }] = await Promise.all([
+      supabase.from('posts').select('*').order('created_at', { ascending: false }),
+      uid ? supabase.from('post_likes').select('post_id').eq('user_id', uid) : Promise.resolve({ data: [] as any[] }),
+      supabase.from('post_comments').select('*').order('created_at', { ascending: true }),
+    ]);
+    const likedSet = new Set<string>(((likesRows ?? []) as any[]).map(l => l.post_id));
+    const commentsByPost = new Map<string, any[]>();
+    ((commentsRows ?? []) as any[]).forEach(c => {
+      const arr = commentsByPost.get(c.post_id) ?? [];
+      arr.push(c);
+      commentsByPost.set(c.post_id, arr);
+    });
+    setPosts(((postsRows ?? []) as any[]).map(r => mapPost(r, profilesList, uid, likedSet, commentsByPost)));
+  }, [mapPost]);
+
+  useEffect(() => {
+    const uid = session?.user?.id ?? null;
+    if (!uid) { setPosts([]); return; }
+    reloadPosts(uid, profiles);
+    const ch = supabase
+      .channel('posts-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => reloadPosts(uid, profiles))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, () => reloadPosts(uid, profiles))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_comments' }, () => reloadPosts(uid, profiles))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [session, profiles, reloadPosts]);
 
   // ---- Load DMs + realtime ----
   useEffect(() => {
@@ -288,28 +349,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return u;
   };
 
-  const toggleLike = (postId: string) => {
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
+  const toggleLike = async (postId: string) => {
+    if (!session?.user) return;
+    const uid = session.user.id;
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    // Optimistic
+    setPosts(prev => prev.map(p => p.id === postId
+      ? { ...p, liked: !p.liked, likes: Math.max(0, p.likes + (p.liked ? -1 : 1)) }
+      : p));
+    if (post.liked) {
+      await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', uid);
+      await supabase.from('posts').update({ likes: Math.max(0, post.likes - 1) }).eq('id', postId);
+    } else {
+      await supabase.from('post_likes').insert({ post_id: postId, user_id: uid });
+      await supabase.from('posts').update({ likes: post.likes + 1 }).eq('id', postId);
+    }
   };
-  const addComment = (postId: string, text: string) => {
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: [...p.comments, {
-      id: `c${Date.now()}`, userId: fallbackUser.id, username: fallbackUser.username,
-      avatar: fallbackUser.avatar, text, timestamp: 'just now',
-    }] } : p));
+
+  const addComment = async (postId: string, text: string) => {
+    if (!session?.user || !text.trim()) return;
+    await supabase.from('post_comments').insert({
+      post_id: postId, user_id: session.user.id, text: text.trim(),
+    });
   };
-  const addPost = (
+
+  const addPost = async (
     type: 'text' | 'video',
     content: string,
     videoUrl?: string,
     meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }
   ) => {
-    setPosts(prev => [{
-      id: `p${Date.now()}`, userId: fallbackUser.id, username: fallbackUser.username, avatar: fallbackUser.avatar,
-      type, content, videoUrl,
-      videoCategory: meta?.videoCategory,
-      videoDuration: meta?.videoDuration,
-      likes: 0, liked: false, comments: [], timestamp: 'just now',
-    }, ...prev]);
+    if (!session?.user) return;
+    const { error } = await supabase.from('posts').insert({
+      user_id: session.user.id,
+      type,
+      content,
+      video_url: videoUrl ?? null,
+      video_category: meta?.videoCategory ?? null,
+      video_duration: meta?.videoDuration ?? null,
+    });
+    if (error) console.error('addPost error', error);
+  };
+
+  const deletePost = async (postId: string) => {
+    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    if (error) console.error('deletePost error', error);
   };
 
   // ---- Profile ops ----
@@ -412,7 +497,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       posts, setPosts, users, teachings, setTeachings,
       stories, addStory, deleteStory, markStoryViewed,
       messages, sendMessage, deleteMessage, markConversationRead,
-      user: fallbackUser, followedUsers, followerCounts, followingCounts, toggleFollow, fetchProfileById, toggleLike, addComment, addPost,
+      user: fallbackUser, followedUsers, followerCounts, followingCounts, toggleFollow, fetchProfileById, toggleLike, addComment, addPost, deletePost,
       updateProfile, uploadAvatar,
       isAuthenticated: !!session, authReady, session, logout,
     }}>
