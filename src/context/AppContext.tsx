@@ -497,7 +497,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       posts, setPosts, users, teachings, setTeachings,
       stories, addStory, deleteStory, markStoryViewed,
       messages, sendMessage, deleteMessage, markConversationRead,
-      user: fallbackUser, followedUsers, followerCounts, followingCounts, toggleFollow, fetchProfileById, toggleLike, addComment, addPost,
+      user: fallbackUser, followedUsers, followerCounts, followingCounts, toggleFollow, fetchProfileById, toggleLike, addComment, addPost, deletePost,
       updateProfile, uploadAvatar,
       isAuthenticated: !!session, authReady, session, logout,
     }}>
