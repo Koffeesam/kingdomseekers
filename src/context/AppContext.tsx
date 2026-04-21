@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { Post, User, Teaching, Story, DirectMessage, DMAttachmentType } from '@/types';
-import { mockPosts, mockUsers, mockTeachings } from '@/data/mockData';
+import { mockUsers, mockTeachings } from '@/data/mockData';
 import { supabase } from '@/integrations/supabase/client';
 import type { Session } from '@supabase/supabase-js';
 
@@ -43,7 +43,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const FALLBACK_AVATAR = 'https://i.pravatar.cc/150?img=15';
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [posts, setPosts] = useState<Post[]>(mockPosts);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [teachings, setTeachings] = useState<Teaching[]>(mockTeachings);
   const [stories, setStories] = useState<Story[]>([]);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
