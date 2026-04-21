@@ -349,28 +349,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return u;
   };
 
-  const toggleLike = (postId: string) => {
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
+  const toggleLike = async (postId: string) => {
+    if (!session?.user) return;
+    const uid = session.user.id;
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    // Optimistic
+    setPosts(prev => prev.map(p => p.id === postId
+      ? { ...p, liked: !p.liked, likes: Math.max(0, p.likes + (p.liked ? -1 : 1)) }
+      : p));
+    if (post.liked) {
+      await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', uid);
+      await supabase.from('posts').update({ likes: Math.max(0, post.likes - 1) }).eq('id', postId);
+    } else {
+      await supabase.from('post_likes').insert({ post_id: postId, user_id: uid });
+      await supabase.from('posts').update({ likes: post.likes + 1 }).eq('id', postId);
+    }
   };
-  const addComment = (postId: string, text: string) => {
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: [...p.comments, {
-      id: `c${Date.now()}`, userId: fallbackUser.id, username: fallbackUser.username,
-      avatar: fallbackUser.avatar, text, timestamp: 'just now',
-    }] } : p));
+
+  const addComment = async (postId: string, text: string) => {
+    if (!session?.user || !text.trim()) return;
+    await supabase.from('post_comments').insert({
+      post_id: postId, user_id: session.user.id, text: text.trim(),
+    });
   };
-  const addPost = (
+
+  const addPost = async (
     type: 'text' | 'video',
     content: string,
     videoUrl?: string,
     meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }
   ) => {
-    setPosts(prev => [{
-      id: `p${Date.now()}`, userId: fallbackUser.id, username: fallbackUser.username, avatar: fallbackUser.avatar,
-      type, content, videoUrl,
-      videoCategory: meta?.videoCategory,
-      videoDuration: meta?.videoDuration,
-      likes: 0, liked: false, comments: [], timestamp: 'just now',
-    }, ...prev]);
+    if (!session?.user) return;
+    const { error } = await supabase.from('posts').insert({
+      user_id: session.user.id,
+      type,
+      content,
+      video_url: videoUrl ?? null,
+      video_category: meta?.videoCategory ?? null,
+      video_duration: meta?.videoDuration ?? null,
+    });
+    if (error) console.error('addPost error', error);
+  };
+
+  const deletePost = async (postId: string) => {
+    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    if (error) console.error('deletePost error', error);
   };
 
   // ---- Profile ops ----
