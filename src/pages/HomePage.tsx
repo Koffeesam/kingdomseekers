@@ -5,6 +5,8 @@ import ksfLogo from '@/assets/ksf-logo.png';
 
 export default function HomePage() {
   const { posts } = useApp();
+  // Home feed shows text posts and short videos (<60s). Reels live in /videos.
+  const feedPosts = posts.filter(p => p.type !== 'video' || p.videoCategory !== 'reel');
 
   return (
     <div className="min-h-screen pb-20 relative">
@@ -32,7 +34,7 @@ export default function HomePage() {
 
       {/* Feed */}
       <main className="relative z-10 max-w-lg mx-auto px-4 pt-4">
-        {posts.map(post => (
+        {feedPosts.map(post => (
           <FeedCard key={post.id} post={post} />
         ))}
       </main>
