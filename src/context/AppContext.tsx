@@ -98,6 +98,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadProfiles(session.user.id);
   }, [session, loadProfiles]);
 
+  // ---- Load posts (with likes + comments) + realtime ----
+  const mapPost = useCallback((row: any, profilesList: User[], myUid: string | null, likedSet: Set<string>, commentsByPost: Map<string, any[]>): Post => {
+    const author = profilesList.find(u => u.id === row.user_id);
+    const cs = commentsByPost.get(row.id) ?? [];
+    return {
+      id: row.id,
+      userId: row.user_id,
+      username: author?.username ?? 'believer',
+      avatar: author?.avatar ?? FALLBACK_AVATAR,
+      type: row.type,
+      content: row.content ?? '',
+      videoUrl: row.video_url ?? undefined,
+      videoCategory: row.video_category ?? undefined,
+      videoDuration: row.video_duration ?? undefined,
+      likes: row.likes ?? 0,
+      liked: !!myUid && likedSet.has(row.id),
+      comments: cs.map(c => {
+        const cAuthor = profilesList.find(u => u.id === c.user_id);
+        return {
+          id: c.id,
+          userId: c.user_id,
+          username: cAuthor?.username ?? 'believer',
+          avatar: cAuthor?.avatar ?? FALLBACK_AVATAR,
+          text: c.text,
+          timestamp: new Date(c.created_at).toLocaleString(),
+        };
+      }),
+      timestamp: new Date(row.created_at).toLocaleString(),
+    };
+  }, []);
+
+  const reloadPosts = useCallback(async (uid: string | null, profilesList: User[]) => {
+    const [{ data: postsRows }, { data: likesRows }, { data: commentsRows }] = await Promise.all([
+      supabase.from('posts').select('*').order('created_at', { ascending: false }),
+      uid ? supabase.from('post_likes').select('post_id').eq('user_id', uid) : Promise.resolve({ data: [] as any[] }),
+      supabase.from('post_comments').select('*').order('created_at', { ascending: true }),
+    ]);
+    const likedSet = new Set<string>(((likesRows ?? []) as any[]).map(l => l.post_id));
+    const commentsByPost = new Map<string, any[]>();
+    ((commentsRows ?? []) as any[]).forEach(c => {
+      const arr = commentsByPost.get(c.post_id) ?? [];
+      arr.push(c);
+      commentsByPost.set(c.post_id, arr);
+    });
+    setPosts(((postsRows ?? []) as any[]).map(r => mapPost(r, profilesList, uid, likedSet, commentsByPost)));
+  }, [mapPost]);
+
+  useEffect(() => {
+    const uid = session?.user?.id ?? null;
+    if (!uid) { setPosts([]); return; }
+    reloadPosts(uid, profiles);
+    const ch = supabase
+      .channel('posts-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => reloadPosts(uid, profiles))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes' }, () => reloadPosts(uid, profiles))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_comments' }, () => reloadPosts(uid, profiles))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [session, profiles, reloadPosts]);
+
   // ---- Load DMs + realtime ----
   useEffect(() => {
     if (!session?.user) return;
