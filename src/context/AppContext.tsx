@@ -28,7 +28,9 @@ interface AppContextType {
   fetchProfileById: (userId: string) => Promise<User | null>;
   toggleLike: (postId: string) => void;
   addComment: (postId: string, text: string) => void;
-  addPost: (type: 'text' | 'video', content: string, videoUrl?: string) => void;
+  addPost: (type: 'text' | 'video', content: string, videoUrl?: string, meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }) => void;
+  updateProfile: (patch: { username?: string; bio?: string; avatarUrl?: string }) => Promise<void>;
+  uploadAvatar: (file: File) => Promise<string>;
   messages: DirectMessage[];
   sendMessage: (toUserId: string, opts: SendMessageOptions) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
@@ -295,11 +297,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avatar: fallbackUser.avatar, text, timestamp: 'just now',
     }] } : p));
   };
-  const addPost = (type: 'text' | 'video', content: string, videoUrl?: string) => {
+  const addPost = (
+    type: 'text' | 'video',
+    content: string,
+    videoUrl?: string,
+    meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }
+  ) => {
     setPosts(prev => [{
       id: `p${Date.now()}`, userId: fallbackUser.id, username: fallbackUser.username, avatar: fallbackUser.avatar,
-      type, content, videoUrl, likes: 0, liked: false, comments: [], timestamp: 'just now',
+      type, content, videoUrl,
+      videoCategory: meta?.videoCategory,
+      videoDuration: meta?.videoDuration,
+      likes: 0, liked: false, comments: [], timestamp: 'just now',
     }, ...prev]);
+  };
+
+  // ---- Profile ops ----
+  const uploadAvatar = async (file: File): Promise<string> => {
+    if (!session?.user) throw new Error('Not signed in');
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const path = `${session.user.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { contentType: file.type, upsert: true });
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+    return publicUrl;
+  };
+
+  const updateProfile = async (patch: { username?: string; bio?: string; avatarUrl?: string }) => {
+    if (!session?.user) return;
+    const update: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (patch.username !== undefined) update.username = patch.username;
+    if (patch.bio !== undefined) update.bio = patch.bio;
+    if (patch.avatarUrl !== undefined) update.avatar_url = patch.avatarUrl;
+    const { error } = await supabase.from('profiles').update(update).eq('user_id', session.user.id);
+    if (error) throw error;
+    // Optimistic local update
+    setMe(prev => prev ? {
+      ...prev,
+      username: patch.username ?? prev.username,
+      bio: patch.bio ?? prev.bio,
+      avatar: patch.avatarUrl ?? prev.avatar,
+    } : prev);
+    setProfiles(prev => prev.map(p => p.id === session.user.id ? {
+      ...p,
+      username: patch.username ?? p.username,
+      bio: patch.bio ?? p.bio,
+      avatar: patch.avatarUrl ?? p.avatar,
+    } : p));
   };
 
   // ---- Stories ops ----
@@ -365,6 +411,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       stories, addStory, deleteStory, markStoryViewed,
       messages, sendMessage, deleteMessage, markConversationRead,
       user: fallbackUser, followedUsers, followerCounts, followingCounts, toggleFollow, fetchProfileById, toggleLike, addComment, addPost,
+      updateProfile, uploadAvatar,
       isAuthenticated: !!session, authReady, session, logout,
     }}>
       {children}

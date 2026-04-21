@@ -25,6 +25,8 @@ export interface Post {
   content: string;
   videoUrl?: string;
   thumbnail?: string;
+  videoCategory?: 'short' | 'reel';
+  videoDuration?: number;
   likes: number;
   liked: boolean;
   comments: Comment[];
