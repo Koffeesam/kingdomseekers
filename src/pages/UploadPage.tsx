@@ -1,11 +1,21 @@
 import { useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Camera, FileText, CheckCircle, Video, Loader2, X, Upload as UploadIcon } from 'lucide-react';
+import { Camera, FileText, CheckCircle, Video, X, Upload as UploadIcon, Film, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
+const REEL_THRESHOLD_SECONDS = 60; // ≥60s = reel (Videos page); <60s = short (Home)
+
+const probeVideoDuration = (file: File): Promise<number> => new Promise((resolve) => {
+  const url = URL.createObjectURL(file);
+  const v = document.createElement('video');
+  v.preload = 'metadata';
+  v.src = url;
+  v.onloadedmetadata = () => { const d = v.duration || 0; URL.revokeObjectURL(url); resolve(d); };
+  v.onerror = () => { URL.revokeObjectURL(url); resolve(0); };
+});
 
 export default function UploadPage() {
   const { addPost, session } = useApp();
@@ -15,11 +25,11 @@ export default function UploadPage() {
   const [submitted, setSubmitted] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [videoDuration, setVideoDuration] = useState<number>(0);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleVideoSelected = (file: File | null) => {
+  const handleVideoSelected = async (file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith('video/')) {
       toast.error('Please select a video file');
@@ -32,15 +42,20 @@ export default function UploadPage() {
     if (videoPreview) URL.revokeObjectURL(videoPreview);
     setVideoFile(file);
     setVideoPreview(URL.createObjectURL(file));
+    const dur = await probeVideoDuration(file);
+    setVideoDuration(dur);
   };
 
   const clearVideo = () => {
     if (videoPreview) URL.revokeObjectURL(videoPreview);
     setVideoFile(null);
     setVideoPreview(null);
+    setVideoDuration(0);
     if (cameraInputRef.current) cameraInputRef.current.value = '';
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  const isReel = videoDuration >= REEL_THRESHOLD_SECONDS;
 
   const handleSubmit = async () => {
     if (mode === 'text') {
@@ -54,33 +69,46 @@ export default function UploadPage() {
     if (!videoFile) { toast.error('Please record or pick a video first'); return; }
     if (!session?.user) { toast.error('You need to be signed in'); return; }
 
-    try {
-      setUploading(true);
-      const ext = videoFile.name.split('.').pop()?.toLowerCase() || 'mp4';
-      const path = `${session.user.id}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage
-        .from('testimony-videos')
-        .upload(path, videoFile, { contentType: videoFile.type, upsert: false });
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from('testimony-videos').getPublicUrl(path);
-      addPost('video', content.trim(), publicUrl);
-      finish();
-    } catch (e: any) {
-      console.error('upload error', e);
-      toast.error(e?.message || 'Upload failed');
-    } finally {
-      setUploading(false);
-    }
+    // Capture locals before we reset state / navigate away
+    const file = videoFile;
+    const caption = content.trim();
+    const category: 'short' | 'reel' = isReel ? 'reel' : 'short';
+    const duration = videoDuration;
+    const destination = category === 'reel' ? '/videos' : '/';
+    const userId = session.user.id;
+
+    // Upload runs in background; user is freed up immediately.
+    toast.message('Uploading testimony…', {
+      description: category === 'reel' ? 'Will appear in Videos when ready' : 'Will appear in Home when ready',
+    });
+    finish(destination);
+
+    (async () => {
+      try {
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+        const path = `${userId}/${Date.now()}.${ext}`;
+        const { error } = await supabase.storage
+          .from('testimony-videos')
+          .upload(path, file, { contentType: file.type, upsert: false, cacheControl: '3600' });
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage.from('testimony-videos').getPublicUrl(path);
+        addPost('video', caption, publicUrl, { videoCategory: category, videoDuration: duration });
+        toast.success(category === 'reel' ? 'Reel posted to Videos ✓' : 'Short posted to Home ✓');
+      } catch (e: any) {
+        console.error('upload error', e);
+        toast.error(e?.message || 'Upload failed');
+      }
+    })();
   };
 
-  const finish = () => {
+  const finish = (to: string = '/') => {
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);
       setContent('');
       clearVideo();
-      navigate('/');
-    }, 1500);
+      navigate(to);
+    }, 900);
   };
 
   if (submitted) {
@@ -144,15 +172,30 @@ export default function UploadPage() {
                 >
                   <X size={16} />
                 </button>
-                <div className="px-3 py-2 text-xs text-muted-foreground truncate">
-                  {videoFile?.name} · {videoFile ? (videoFile.size / (1024 * 1024)).toFixed(1) : '0'} MB
+                <div className="px-3 py-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="truncate">
+                    {videoFile?.name} · {videoFile ? (videoFile.size / (1024 * 1024)).toFixed(1) : '0'} MB
+                  </span>
+                  {videoDuration > 0 && (
+                    <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${
+                      isReel ? 'bg-primary/15 text-primary' : 'bg-accent/15 text-accent-foreground'
+                    }`}>
+                      {isReel ? <Film size={12} /> : <Clock size={12} />}
+                      {isReel ? `Reel · ${Math.round(videoDuration)}s` : `Short · ${Math.round(videoDuration)}s`}
+                    </span>
+                  )}
                 </div>
+                <p className="px-3 pb-2 text-[11px] text-muted-foreground">
+                  {isReel
+                    ? '60s+ videos go to the Videos page (reels).'
+                    : 'Under 60s videos appear on the Home feed (shorts).'}
+                </p>
               </div>
             ) : (
               <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center gap-3">
                 <Camera size={40} className="text-primary" />
                 <p className="text-sm text-foreground font-medium">Record or upload a short video testimony</p>
-                <p className="text-xs text-muted-foreground">Up to 100 MB · MP4, WebM, or MOV</p>
+                <p className="text-xs text-muted-foreground">Up to 100 MB · Shorts (&lt;60s) → Home · Reels (60s+) → Videos</p>
                 <div className="flex gap-2 w-full mt-2">
                   <button
                     onClick={() => cameraInputRef.current?.click()}
@@ -202,10 +245,10 @@ export default function UploadPage() {
 
         <button
           onClick={handleSubmit}
-          disabled={uploading || (mode === 'text' ? !content.trim() : !videoFile)}
+          disabled={mode === 'text' ? !content.trim() : !videoFile}
           className="w-full mt-4 py-3.5 rounded-xl font-semibold text-sm gold-gradient text-primary-foreground shadow-lg disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         >
-          {uploading ? (<><Loader2 size={16} className="animate-spin" /> Uploading…</>) : <>Share Testimony ✝️</>}
+          Share Testimony ✝️
         </button>
 
         <div className="mt-6 bg-muted/50 rounded-xl p-4">

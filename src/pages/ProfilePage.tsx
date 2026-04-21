@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { useParams, Link } from 'react-router-dom';
-import { MessageCircle, Loader2 } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { MessageCircle, Loader2, Pencil, Upload as UploadIcon } from 'lucide-react';
 import FeedCard from '@/components/FeedCard';
+import EditProfileDialog from '@/components/EditProfileDialog';
 import { User } from '@/types';
 
 export default function ProfilePage() {
   const { posts, users, user: currentUser, followedUsers, followerCounts, followingCounts, toggleFollow, fetchProfileById } = useApp();
   const { userId } = useParams();
+  const navigate = useNavigate();
+  const [editOpen, setEditOpen] = useState(false);
 
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -105,6 +108,23 @@ export default function ProfilePage() {
               </Link>
             </div>
           )}
+
+          {isOwnProfile && (
+            <div className="flex gap-2 justify-center mt-4">
+              <button
+                onClick={() => setEditOpen(true)}
+                className="px-5 py-2.5 rounded-xl font-semibold text-sm gold-gradient text-primary-foreground shadow-lg active:scale-[0.98] inline-flex items-center gap-1.5"
+              >
+                <Pencil size={14} /> Edit Profile
+              </button>
+              <button
+                onClick={() => navigate('/upload')}
+                className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-muted text-foreground hover:bg-muted/70 active:scale-[0.98] inline-flex items-center gap-1.5"
+              >
+                <UploadIcon size={14} /> Upload Video
+              </button>
+            </div>
+          )}
         </div>
 
         <h3 className="text-base font-display font-bold text-foreground mb-3">
@@ -119,6 +139,8 @@ export default function ProfilePage() {
           userPosts.map(post => <FeedCard key={post.id} post={post} />)
         )}
       </main>
+
+      {isOwnProfile && <EditProfileDialog open={editOpen} onOpenChange={setEditOpen} />}
     </div>
   );
 }
