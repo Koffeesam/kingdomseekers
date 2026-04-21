@@ -29,28 +29,71 @@ export function useCall() {
 export function CallManager({ children }: { children: ReactNode }) {
   const { session, users } = useApp();
   const [active, setActive] = useState<ActiveCall | null>(null);
-  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+  const ringIntervalRef = useRef<number | null>(null);
+  const notifRef = useRef<Notification | null>(null);
 
-  // Simple synthesized ringtone using oscillator (no asset needed)
+  // Ask for browser notification permission once the user is signed in.
+  useEffect(() => {
+    if (!session?.user) return;
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => { /* ignore */ });
+    }
+  }, [session?.user]);
+
+  const stopRingtone = useCallback(() => {
+    if (ringIntervalRef.current) {
+      window.clearInterval(ringIntervalRef.current);
+      ringIntervalRef.current = null;
+    }
+    if (notifRef.current) {
+      try { notifRef.current.close(); } catch { /* ignore */ }
+      notifRef.current = null;
+    }
+  }, []);
+
+  // Looping synthesized ringtone (until user accepts/declines or 45s timeout)
   const playRingtone = useCallback(() => {
+    const playBurst = () => {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const playBeep = (delay: number) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.frequency.value = 480;
+          gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+          gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + delay + 0.05);
+          gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + 0.4);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(ctx.currentTime + delay);
+          osc.stop(ctx.currentTime + delay + 0.45);
+        };
+        [0, 0.6, 1.8, 2.4].forEach(playBeep);
+        window.setTimeout(() => ctx.close(), 3500);
+      } catch { /* ignore (likely autoplay blocked) */ }
+    };
+    playBurst();
+    if (ringIntervalRef.current) window.clearInterval(ringIntervalRef.current);
+    ringIntervalRef.current = window.setInterval(playBurst, 4000);
+    // Auto-stop after 45s
+    window.setTimeout(stopRingtone, 45000);
+  }, [stopRingtone]);
+
+  const showCallNotification = useCallback((callerName: string, callType: CallType) => {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission !== 'granted') return;
     try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const playBeep = (delay: number) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.frequency.value = 480;
-        gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-        gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + delay + 0.05);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + 0.4);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(ctx.currentTime + delay);
-        osc.stop(ctx.currentTime + delay + 0.45);
-      };
-      [0, 0.6, 1.8, 2.4].forEach(playBeep);
-      window.setTimeout(() => ctx.close(), 3500);
-    } catch (e) { /* ignore */ }
+      const n = new Notification(`Incoming ${callType} call`, {
+        body: `${callerName} is calling you`,
+        icon: '/favicon.ico',
+        tag: 'kingdom-seekers-call',
+        requireInteraction: true,
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+      notifRef.current = n;
+    } catch { /* ignore */ }
   }, []);
 
   // Listen for incoming calls (where I'm the callee)
@@ -71,6 +114,8 @@ export function CallManager({ children }: { children: ReactNode }) {
           if (!caller) return;
           setActive({ callId: call.id, other: caller, role: 'callee', callType: call.call_type, accepted: false });
           playRingtone();
+          showCallNotification(caller.username, call.call_type);
+          toast(`📞 Incoming ${call.call_type} call from ${caller.username}`);
         },
       )
       .on(
@@ -81,13 +126,14 @@ export function CallManager({ children }: { children: ReactNode }) {
           if (call.status === 'declined') {
             toast.error('Call declined');
             setActive(curr => curr?.callId === call.id ? null : curr);
+            stopRingtone();
           }
         },
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [session?.user, users, active, playRingtone]);
+  }, [session?.user, users, active, playRingtone, showCallNotification, stopRingtone]);
 
   const startCall = useCallback(async (other: User, callType: CallType) => {
     if (!session?.user) return;
@@ -114,6 +160,7 @@ export function CallManager({ children }: { children: ReactNode }) {
 
   const handleAccept = async () => {
     if (!active) return;
+    stopRingtone();
     await supabase
       .from('calls')
       .update({ status: 'accepted', started_at: new Date().toISOString() })
@@ -123,6 +170,7 @@ export function CallManager({ children }: { children: ReactNode }) {
 
   const handleDecline = async () => {
     if (!active) return;
+    stopRingtone();
     await supabase
       .from('calls')
       .update({ status: 'declined', ended_at: new Date().toISOString() })
@@ -130,7 +178,7 @@ export function CallManager({ children }: { children: ReactNode }) {
     setActive(null);
   };
 
-  const handleClose = () => setActive(null);
+  const handleClose = () => { stopRingtone(); setActive(null); };
 
   return (
     <CallManagerContext.Provider value={{ startCall }}>
