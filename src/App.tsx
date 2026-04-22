@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider, useApp } from "@/context/AppContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import BottomNav from "@/components/BottomNav";
 import { CallManager } from "@/components/CallManager";
 import HomePage from "./pages/HomePage";
@@ -77,11 +78,13 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AppProvider>
-        <BrowserRouter>
-          <AppLayout />
-        </BrowserRouter>
-      </AppProvider>
+      <LanguageProvider>
+        <AppProvider>
+          <BrowserRouter>
+            <AppLayout />
+          </BrowserRouter>
+        </AppProvider>
+      </LanguageProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

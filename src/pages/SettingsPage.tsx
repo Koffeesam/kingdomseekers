@@ -6,13 +6,14 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useApp } from '@/context/AppContext';
+import { useLang, Lang } from '@/context/LanguageContext';
 
 export default function SettingsPage() {
   const { logout } = useApp();
+  const { lang, setLang, t } = useLang();
   const navigate = useNavigate();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [notifications, setNotifications] = useState(true);
-  const [language, setLanguage] = useState('en');
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -31,7 +32,7 @@ export default function SettingsPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <SettingsIcon className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-display font-bold">Settings</h1>
+          <h1 className="text-lg font-display font-bold">{t('settings')}</h1>
         </div>
       </header>
 
@@ -41,8 +42,8 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <Moon className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm font-medium">Dark Mode</p>
-                <p className="text-xs text-muted-foreground">Easier on the eyes</p>
+                <p className="text-sm font-medium">{t('dark_mode')}</p>
+                <p className="text-xs text-muted-foreground">{t('dark_mode_sub')}</p>
               </div>
             </div>
             <Switch checked={dark} onCheckedChange={setDark} />
@@ -52,8 +53,8 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <Bell className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm font-medium">Notifications</p>
-                <p className="text-xs text-muted-foreground">Prayers, messages, live alerts</p>
+                <p className="text-sm font-medium">{t('notifications')}</p>
+                <p className="text-xs text-muted-foreground">{t('notifications_sub')}</p>
               </div>
             </div>
             <Switch checked={notifications} onCheckedChange={setNotifications} />
@@ -63,11 +64,11 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3 min-w-0">
               <Globe className="h-5 w-5 text-primary" />
               <div className="min-w-0">
-                <p className="text-sm font-medium">Language</p>
-                <p className="text-xs text-muted-foreground">App display language</p>
+                <p className="text-sm font-medium">{t('language')}</p>
+                <p className="text-xs text-muted-foreground">{t('language_sub')}</p>
               </div>
             </div>
-            <Select value={language} onValueChange={setLanguage}>
+            <Select value={lang} onValueChange={(v) => setLang(v as Lang)}>
               <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="en">English</SelectItem>
@@ -80,7 +81,7 @@ export default function SettingsPage() {
         </Card>
 
         <Button variant="destructive" className="w-full gap-2" onClick={handleLogout}>
-          <LogOut className="h-4 w-4" /> Log out
+          <LogOut className="h-4 w-4" /> {t('logout')}
         </Button>
       </main>
     </div>
