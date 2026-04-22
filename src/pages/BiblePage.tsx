@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BookOpen, Globe, ChevronRight, Search, Loader2, Heart } from 'lucide-react';
+import { ArrowLeft, BookOpen, Globe, ChevronRight, Search, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TopNav from '@/components/TopNav';
 import { toast } from 'sonner';
+import { useLang, Lang } from '@/context/LanguageContext';
 
 // Versions supported by bible-api.com
 const VERSIONS = [
@@ -69,14 +70,17 @@ interface Verse { book_name: string; chapter: number; verse: number; text: strin
 type View = 'books' | 'chapters' | 'reader';
 
 export default function BiblePage() {
-  const [version, setVersion] = useState('kjv');
-  const [language, setLanguage] = useState('en');
+  const { lang, setLang, t, bibleTranslation } = useLang();
+  const [version, setVersion] = useState(bibleTranslation);
   const [view, setView] = useState<View>('books');
   const [book, setBook] = useState<typeof BOOKS[number] | null>(null);
   const [chapter, setChapter] = useState<number>(1);
   const [verses, setVerses] = useState<Verse[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+
+  // When global language changes, switch Bible translation accordingly
+  useEffect(() => { setVersion(bibleTranslation); }, [bibleTranslation]);
 
   // Load chapter when reader is opened
   useEffect(() => {
