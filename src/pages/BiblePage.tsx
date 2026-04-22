@@ -163,19 +163,19 @@ export default function BiblePage() {
             <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search a book…"
+                placeholder={t('search_book')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="pl-9 h-10"
               />
             </div>
-            {(['OT', 'NT'] as const).map(t => {
-              const list = filteredBooks.filter(b => b.testament === t);
+            {(['OT', 'NT'] as const).map(testament => {
+              const list = filteredBooks.filter(b => b.testament === testament);
               if (!list.length) return null;
               return (
-                <div key={t} className="mb-6">
+                <div key={testament} className="mb-6">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-                    {t === 'OT' ? 'Old Testament' : 'New Testament'}
+                    {testament === 'OT' ? t('old_testament') : t('new_testament')}
                   </h2>
                   <Card className="divide-y divide-border overflow-hidden">
                     {list.map(b => (
@@ -186,7 +186,7 @@ export default function BiblePage() {
                       >
                         <span className="text-sm font-medium">{b.name}</span>
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          <span className="text-xs">{b.chapters} ch</span>
+                          <span className="text-xs">{b.chapters} {t('chapters_short')}</span>
                           <ChevronRight className="h-4 w-4" />
                         </div>
                       </button>
@@ -219,7 +219,7 @@ export default function BiblePage() {
           <>
             {loading && (
               <div className="flex items-center justify-center py-16 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading…
+                <Loader2 className="h-6 w-6 animate-spin mr-2" /> {t('loading')}
               </div>
             )}
             {!loading && verses.length > 0 && (
@@ -246,7 +246,7 @@ export default function BiblePage() {
                   onClick={() => setChapter(c => c - 1)}
                   className="flex-1"
                 >
-                  ← Prev
+                  {t('prev')}
                 </Button>
                 <span className="text-xs text-muted-foreground font-medium">
                   {chapter} / {book.chapters}
@@ -257,7 +257,7 @@ export default function BiblePage() {
                   onClick={() => setChapter(c => c + 1)}
                   className="flex-1"
                 >
-                  Next →
+                  {t('next')}
                 </Button>
               </div>
             )}
