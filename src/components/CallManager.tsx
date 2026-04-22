@@ -27,10 +27,20 @@ export function useCall() {
 }
 
 export function CallManager({ children }: { children: ReactNode }) {
-  const { session, users } = useApp();
+  const { session, users, sendMessage } = useApp();
   const [active, setActive] = useState<ActiveCall | null>(null);
   const ringIntervalRef = useRef<number | null>(null);
   const notifRef = useRef<Notification | null>(null);
+
+  // Helper: send a "missed call" DM so the recipient sees it in their chat
+  const sendMissedCallDM = useCallback(async (toUserId: string, callType: CallType) => {
+    try {
+      const icon = callType === 'video' ? '📹' : '📞';
+      await sendMessage(toUserId, { text: `${icon} Tried to ${callType === 'video' ? 'video call' : 'call'} you` });
+    } catch (e) {
+      console.error('missed-call DM error', e);
+    }
+  }, [sendMessage]);
 
   // Ask for browser notification permission once the user is signed in.
   useEffect(() => {
@@ -125,7 +135,14 @@ export function CallManager({ children }: { children: ReactNode }) {
           const call = payload.new as { id: string; status: string };
           if (call.status === 'declined') {
             toast.error('Call declined');
-            setActive(curr => curr?.callId === call.id ? null : curr);
+            setActive(curr => {
+              if (curr?.callId === call.id) {
+                // Caller side: leave a missed-call DM for the callee
+                sendMissedCallDM(curr.other.id, curr.callType);
+                return null;
+              }
+              return curr;
+            });
             stopRingtone();
           }
         },
@@ -133,7 +150,7 @@ export function CallManager({ children }: { children: ReactNode }) {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [session?.user, users, active, playRingtone, showCallNotification, stopRingtone]);
+  }, [session?.user, users, active, playRingtone, showCallNotification, stopRingtone, sendMissedCallDM]);
 
   const startCall = useCallback(async (other: User, callType: CallType) => {
     if (!session?.user) return;
@@ -178,7 +195,16 @@ export function CallManager({ children }: { children: ReactNode }) {
     setActive(null);
   };
 
-  const handleClose = () => { stopRingtone(); setActive(null); };
+  const handleClose = () => {
+    stopRingtone();
+    // If the caller closes before the callee accepted, treat as a missed call
+    if (active && active.role === 'caller' && !active.accepted) {
+      void sendMissedCallDM(active.other.id, active.callType);
+      // mark call as missed in DB (best-effort)
+      void supabase.from('calls').update({ status: 'missed', ended_at: new Date().toISOString() }).eq('id', active.callId);
+    }
+    setActive(null);
+  };
 
   return (
     <CallManagerContext.Provider value={{ startCall }}>
