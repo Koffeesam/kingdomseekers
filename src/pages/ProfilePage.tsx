@@ -4,6 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MessageCircle, Loader2, Pencil, Upload as UploadIcon } from 'lucide-react';
 import FeedCard from '@/components/FeedCard';
 import EditProfileDialog from '@/components/EditProfileDialog';
+import AvatarViewer from '@/components/AvatarViewer';
 import { User } from '@/types';
 
 export default function ProfilePage() {
@@ -11,6 +12,7 @@ export default function ProfilePage() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
+  const [avatarOpen, setAvatarOpen] = useState(false);
 
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -64,11 +66,17 @@ export default function ProfilePage() {
 
       <main className="max-w-lg mx-auto px-4 pt-6">
         <div className="feed-card text-center mb-6">
-          <img
-            src={u.avatar}
-            alt={u.username}
-            className="profile-avatar w-24 h-24 mx-auto mb-3 object-cover rounded-full"
-          />
+          <button
+            onClick={() => setAvatarOpen(true)}
+            className="block mx-auto mb-3 hover:scale-105 active:scale-95 transition"
+            aria-label={`View ${u.username} profile picture`}
+          >
+            <img
+              src={u.avatar}
+              alt={u.username}
+              className="profile-avatar w-24 h-24 object-cover rounded-full"
+            />
+          </button>
           <h2 className="text-lg font-display font-bold text-foreground">{u.username}</h2>
           {u.bio && <p className="text-sm text-muted-foreground mt-1">{u.bio}</p>}
 
@@ -141,6 +149,7 @@ export default function ProfilePage() {
       </main>
 
       {isOwnProfile && <EditProfileDialog open={editOpen} onOpenChange={setEditOpen} />}
+      <AvatarViewer src={u.avatar} username={u.username} open={avatarOpen} onClose={() => setAvatarOpen(false)} />
     </div>
   );
 }
