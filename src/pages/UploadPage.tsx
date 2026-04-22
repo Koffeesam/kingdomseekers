@@ -131,22 +131,32 @@ export default function UploadPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-6">
-        <div className="flex gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-2 mb-6">
           <button
-            onClick={() => setMode('text')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${
+            onClick={() => { setMode('text'); clearVideo(); }}
+            className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl font-medium text-xs transition-all ${
               mode === 'text' ? 'gold-gradient text-primary-foreground shadow-lg' : 'bg-muted text-muted-foreground'
             }`}
           >
             <FileText size={18} /> Text
           </button>
           <button
-            onClick={() => setMode('video')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all ${
-              mode === 'video' ? 'gold-gradient text-primary-foreground shadow-lg' : 'bg-muted text-muted-foreground'
+            onClick={() => setMode('short')}
+            className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl font-medium text-xs transition-all ${
+              mode === 'short' ? 'gold-gradient text-primary-foreground shadow-lg' : 'bg-muted text-muted-foreground'
             }`}
           >
-            <Video size={18} /> Video
+            <Clock size={18} /> Short
+            <span className="text-[10px] opacity-80">→ Home</span>
+          </button>
+          <button
+            onClick={() => setMode('reel')}
+            className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl font-medium text-xs transition-all ${
+              mode === 'reel' ? 'gold-gradient text-primary-foreground shadow-lg' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <Film size={18} /> Reel
+            <span className="text-[10px] opacity-80">→ Videos</span>
           </button>
         </div>
 
@@ -177,24 +187,26 @@ export default function UploadPage() {
                   </span>
                   {videoDuration > 0 && (
                     <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${
-                      isReel ? 'bg-primary/15 text-primary' : 'bg-accent/15 text-accent-foreground'
+                      mode === 'reel' ? 'bg-primary/15 text-primary' : 'bg-accent/15 text-accent-foreground'
                     }`}>
-                      {isReel ? <Film size={12} /> : <Clock size={12} />}
-                      {isReel ? `Reel · ${Math.round(videoDuration)}s` : `Short · ${Math.round(videoDuration)}s`}
+                      {mode === 'reel' ? <Film size={12} /> : <Clock size={12} />}
+                      {mode === 'reel' ? `Reel · ${Math.round(videoDuration)}s` : `Short · ${Math.round(videoDuration)}s`}
                     </span>
                   )}
                 </div>
                 <p className="px-3 pb-2 text-[11px] text-muted-foreground">
-                  {isReel
-                    ? '60s+ videos go to the Videos page (reels).'
-                    : 'Under 60s videos appear on the Home feed (shorts).'}
+                  {mode === 'reel'
+                    ? 'Reels appear on the Videos page (TikTok-style feed).'
+                    : 'Shorts appear on the Home feed.'}
                 </p>
               </div>
             ) : (
               <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center gap-3">
                 <Camera size={40} className="text-primary" />
-                <p className="text-sm text-foreground font-medium">Record or upload a short video testimony</p>
-                <p className="text-xs text-muted-foreground">Up to 100 MB · Shorts (&lt;60s) → Home · Reels (60s+) → Videos</p>
+                <p className="text-sm text-foreground font-medium">
+                  {mode === 'reel' ? 'Record or upload a Reel (Videos page)' : 'Record or upload a Short (Home feed)'}
+                </p>
+                <p className="text-xs text-muted-foreground">Up to 100 MB · Vertical video recommended</p>
                 <div className="flex gap-2 w-full mt-2">
                   <button
                     onClick={() => cameraInputRef.current?.click()}
@@ -230,7 +242,7 @@ export default function UploadPage() {
             <textarea
               value={content}
               onChange={e => setContent(e.target.value)}
-              placeholder="Add a caption for your video (optional)..."
+              placeholder={`Add a caption for your ${mode} (optional)...`}
               rows={3}
               maxLength={500}
               className="w-full bg-card border border-border rounded-2xl p-4 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
@@ -247,7 +259,7 @@ export default function UploadPage() {
           disabled={mode === 'text' ? !content.trim() : !videoFile}
           className="w-full mt-4 py-3.5 rounded-xl font-semibold text-sm gold-gradient text-primary-foreground shadow-lg disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         >
-          Share Testimony ✝️
+          {mode === 'reel' ? 'Post Reel ✝️' : mode === 'short' ? 'Post Short ✝️' : 'Share Testimony ✝️'}
         </button>
 
         <div className="mt-6 bg-muted/50 rounded-xl p-4">
