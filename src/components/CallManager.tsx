@@ -12,6 +12,8 @@ interface ActiveCall {
   role: CallRole;
   callType: CallType;
   accepted: boolean;
+  // Caller-side: did the callee actually pick up?
+  connected?: boolean;
 }
 
 interface CallManagerContextType {
@@ -144,6 +146,8 @@ export function CallManager({ children }: { children: ReactNode }) {
               return curr;
             });
             stopRingtone();
+          } else if (call.status === 'accepted') {
+            setActive(curr => curr?.callId === call.id ? { ...curr, connected: true } : curr);
           }
         },
       )
@@ -197,10 +201,9 @@ export function CallManager({ children }: { children: ReactNode }) {
 
   const handleClose = () => {
     stopRingtone();
-    // If the caller closes before the callee accepted, treat as a missed call
-    if (active && active.role === 'caller' && !active.accepted) {
+    // If the caller closes before the callee picked up, leave a missed-call DM
+    if (active && active.role === 'caller' && !active.connected) {
       void sendMissedCallDM(active.other.id, active.callType);
-      // mark call as missed in DB (best-effort)
       void supabase.from('calls').update({ status: 'missed', ended_at: new Date().toISOString() }).eq('id', active.callId);
     }
     setActive(null);
