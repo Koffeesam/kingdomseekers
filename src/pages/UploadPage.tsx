@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Camera, FileText, CheckCircle, Video, X, Upload as UploadIcon, Film, Clock } from 'lucide-react';
+import { Camera, FileText, CheckCircle, X, Upload as UploadIcon, Film, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
-const REEL_THRESHOLD_SECONDS = 60; // ≥60s = reel (Videos page); <60s = short (Home)
+
+type UploadMode = 'text' | 'short' | 'reel';
 
 const probeVideoDuration = (file: File): Promise<number> => new Promise((resolve) => {
   const url = URL.createObjectURL(file);
@@ -20,7 +21,7 @@ const probeVideoDuration = (file: File): Promise<number> => new Promise((resolve
 export default function UploadPage() {
   const { addPost, session } = useApp();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'text' | 'video'>('text');
+  const [mode, setMode] = useState<UploadMode>('text');
   const [content, setContent] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -55,7 +56,7 @@ export default function UploadPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const isReel = videoDuration >= REEL_THRESHOLD_SECONDS;
+  const isVideoMode = mode === 'short' || mode === 'reel';
 
   const handleSubmit = async () => {
     if (mode === 'text') {
@@ -65,21 +66,19 @@ export default function UploadPage() {
       return;
     }
 
-    // video mode
+    // video mode (short or reel — user explicitly picked)
     if (!videoFile) { toast.error('Please record or pick a video first'); return; }
     if (!session?.user) { toast.error('You need to be signed in'); return; }
 
-    // Capture locals before we reset state / navigate away
     const file = videoFile;
     const caption = content.trim();
-    const category: 'short' | 'reel' = isReel ? 'reel' : 'short';
+    const category: 'short' | 'reel' = mode === 'reel' ? 'reel' : 'short';
     const duration = videoDuration;
     const destination = category === 'reel' ? '/videos' : '/';
     const userId = session.user.id;
 
-    // Upload runs in background; user is freed up immediately.
     toast.message('Uploading testimony…', {
-      description: category === 'reel' ? 'Will appear in Videos when ready' : 'Will appear in Home when ready',
+      description: category === 'reel' ? 'Your reel will appear in Videos shortly' : 'Your short will appear on Home shortly',
     });
     finish(destination);
 
@@ -92,7 +91,7 @@ export default function UploadPage() {
           .upload(path, file, { contentType: file.type, upsert: false, cacheControl: '3600' });
         if (error) throw error;
         const { data: { publicUrl } } = supabase.storage.from('testimony-videos').getPublicUrl(path);
-        addPost('video', caption, publicUrl, { videoCategory: category, videoDuration: duration });
+        await addPost('video', caption, publicUrl, { videoCategory: category, videoDuration: duration });
         toast.success(category === 'reel' ? 'Reel posted to Videos ✓' : 'Short posted to Home ✓');
       } catch (e: any) {
         console.error('upload error', e);
