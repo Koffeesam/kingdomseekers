@@ -129,7 +129,7 @@ export default function BiblePage() {
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <BookOpen className="h-5 w-5 text-primary shrink-0" />
             <h1 className="text-base sm:text-lg font-display font-bold truncate">
-              {view === 'books' && 'Holy Bible'}
+              {view === 'books' && t('holy_bible')}
               {view === 'chapters' && book?.name}
               {view === 'reader' && `${book?.name} ${chapter}`}
             </h1>
@@ -144,7 +144,7 @@ export default function BiblePage() {
                 {VERSIONS.map(v => <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={language} onValueChange={setLanguage}>
+            <Select value={lang} onValueChange={(v) => setLang(v as Lang)}>
               <SelectTrigger className="h-9 text-xs">
                 <Globe className="h-3 w-3 mr-1" /><SelectValue />
               </SelectTrigger>
