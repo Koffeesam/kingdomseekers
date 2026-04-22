@@ -381,15 +381,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }
   ) => {
     if (!session?.user) return;
-    const { error } = await supabase.from('posts').insert({
+    const { data, error } = await supabase.from('posts').insert({
       user_id: session.user.id,
       type,
       content,
       video_url: videoUrl ?? null,
       video_category: meta?.videoCategory ?? null,
       video_duration: meta?.videoDuration ?? null,
-    });
-    if (error) console.error('addPost error', error);
+    }).select('*').single();
+    if (error) { console.error('addPost error', error); return; }
+    // Optimistic prepend so the post appears immediately for the author —
+    // realtime will reconcile/dedupe shortly after.
+    if (data) {
+      const author = profiles.find(u => u.id === session.user.id);
+      const optimistic: Post = {
+        id: data.id,
+        userId: data.user_id,
+        username: author?.username ?? fallbackUser.username,
+        avatar: author?.avatar ?? fallbackUser.avatar,
+        type: data.type as 'text' | 'video',
+        content: data.content ?? '',
+        videoUrl: data.video_url ?? undefined,
+        videoCategory: (data.video_category as 'short' | 'reel' | null) ?? undefined,
+        videoDuration: data.video_duration ?? undefined,
+        likes: 0,
+        liked: false,
+        comments: [],
+        timestamp: 'Just now',
+      };
+      setPosts(prev => prev.some(p => p.id === optimistic.id) ? prev : [optimistic, ...prev]);
+    }
   };
 
   const deletePost = async (postId: string) => {
