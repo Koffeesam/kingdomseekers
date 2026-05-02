@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, ChevronDown, ChevronUp, Send, Play } from 'lucide-react';
+import { Heart, MessageCircle, ChevronDown, ChevronUp, Send, Play, Trash2 } from 'lucide-react';
 import { Post } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { Link } from 'react-router-dom';
@@ -8,7 +8,7 @@ import AvatarViewer from '@/components/AvatarViewer';
 import { useLang } from '@/context/LanguageContext';
 
 export default function FeedCard({ post }: { post: Post }) {
-  const { toggleLike, addComment } = useApp();
+  const { toggleLike, addComment, deleteComment, user } = useApp();
   const { t } = useLang();
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -102,15 +102,27 @@ export default function FeedCard({ post }: { post: Post }) {
       {/* Comments */}
       {showComments && (
         <div className="mx-4 mt-2 mb-4 pt-3 border-t border-border/60 space-y-3">
-          {post.comments.map(c => (
-            <div key={c.id} className="flex gap-2">
-              <img src={c.avatar} alt={c.username} className="w-7 h-7 rounded-full object-cover" />
-              <div className="bg-muted rounded-2xl rounded-tl-sm px-3 py-2 flex-1">
-                <p className="text-xs font-semibold text-foreground">{c.username}</p>
-                <p className="text-xs text-foreground/80">{c.text}</p>
+          {post.comments.map(c => {
+            const canDelete = c.userId === user.id || post.userId === user.id;
+            return (
+              <div key={c.id} className="flex gap-2 group/comment">
+                <img src={c.avatar} alt={c.username} className="w-7 h-7 rounded-full object-cover" />
+                <div className="bg-muted rounded-2xl rounded-tl-sm px-3 py-2 flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground">{c.username}</p>
+                  <p className="text-xs text-foreground/80 break-words">{c.text}</p>
+                </div>
+                {canDelete && (
+                  <button
+                    onClick={() => deleteComment(c.id)}
+                    className="opacity-0 group-hover/comment:opacity-100 focus:opacity-100 transition text-muted-foreground hover:text-destructive p-1 self-center"
+                    aria-label="Delete comment"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div className="flex gap-2 items-center">
             <input
