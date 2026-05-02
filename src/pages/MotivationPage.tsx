@@ -1,6 +1,17 @@
-import { ArrowLeft, Sparkles, HandHeart } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, Sparkles, HandHeart, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
+} from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useApp } from '@/context/AppContext';
+import { toast } from 'sonner';
 
 const MOTIVATIONS = [
   { verse: 'Jeremiah 29:11', text: '"For I know the plans I have for you," declares the Lord, "plans to prosper you and not to harm you, plans to give you hope and a future."' },
@@ -20,10 +31,51 @@ Strengthen the weary, comfort the broken, and draw the lost closer to Your heart
 In Jesus' mighty name, Amen. 🙏`,
 };
 
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
 export default function MotivationPage() {
-  // Pick a "today" motivation deterministically
-  const dayIndex = new Date().getDate() % MOTIVATIONS.length;
-  const today = MOTIVATIONS[dayIndex];
+  const { isAdmin, session } = useApp();
+  const [override, setOverride] = useState<{ body: string; reference: string | null } | null>(null);
+  const [prayerOverride, setPrayerOverride] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ kind: 'motivation' as 'motivation' | 'prayer', body: '', reference: '' });
+
+  // Day index — rotates automatically every day
+  const dayIndex = Math.floor(Date.now() / 86_400_000) % MOTIVATIONS.length;
+  const baseToday = MOTIVATIONS[dayIndex];
+  const today = override ? { text: override.body, verse: override.reference || '' } : baseToday;
+
+  useEffect(() => {
+    const date = todayKey();
+    supabase.from('daily_content').select('kind, body, reference').eq('for_date', date).then(({ data }) => {
+      const m = data?.find(d => d.kind === 'motivation');
+      const p = data?.find(d => d.kind === 'prayer');
+      if (m) setOverride({ body: m.body, reference: m.reference });
+      if (p) setPrayerOverride(p.body);
+    });
+  }, []);
+
+  const handlePublish = async () => {
+    if (!session?.user || !form.body.trim()) {
+      toast.error('Please add some content');
+      return;
+    }
+    const { error } = await supabase.from('daily_content').upsert({
+      kind: form.kind,
+      for_date: todayKey(),
+      body: form.body.trim(),
+      reference: form.reference.trim() || null,
+      created_by: session.user.id,
+    }, { onConflict: 'kind,for_date' });
+    if (error) { toast.error(error.message); return; }
+    toast.success('Published for today');
+    if (form.kind === 'motivation') setOverride({ body: form.body.trim(), reference: form.reference.trim() });
+    else setPrayerOverride(form.body.trim());
+    setOpen(false);
+    setForm({ kind: 'motivation', body: '', reference: '' });
+  };
+
+  const prayerBody = prayerOverride ?? PRAYER.body;
 
   return (
     <div className="min-h-screen pb-24 bg-background">
@@ -33,7 +85,45 @@ export default function MotivationPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <Sparkles className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-display font-bold">Daily Motivation</h1>
+          <h1 className="text-lg font-display font-bold flex-1">Daily Motivation</h1>
+          {isAdmin && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="gap-1"><Plus size={14} /> Publish</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader><DialogTitle>Publish for today</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label>Type</Label>
+                    <div className="flex gap-2 mt-1">
+                      {(['motivation','prayer'] as const).map(k => (
+                        <Button key={k} type="button" size="sm" variant={form.kind === k ? 'default' : 'outline'}
+                          onClick={() => setForm({ ...form, kind: k })}>
+                          {k === 'motivation' ? 'Motivation' : 'Prayer'}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Body</Label>
+                    <Textarea rows={6} value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} />
+                  </div>
+                  {form.kind === 'motivation' && (
+                    <div>
+                      <Label>Verse reference (optional)</Label>
+                      <Input placeholder="e.g. Psalm 23:1" value={form.reference}
+                        onChange={e => setForm({ ...form, reference: e.target.value })} />
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                  <Button onClick={handlePublish}>Publish</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </header>
 
@@ -45,7 +135,7 @@ export default function MotivationPage() {
             <span className="text-xs font-semibold uppercase tracking-wider text-primary">Today's Word</span>
           </div>
           <p className="font-display text-lg leading-relaxed mb-3">{today.text}</p>
-          <p className="text-sm font-semibold text-gold-dark">— {today.verse}</p>
+          {today.verse && <p className="text-sm font-semibold text-gold-dark">— {today.verse}</p>}
         </Card>
 
         {/* Today's Prayer */}
@@ -54,7 +144,7 @@ export default function MotivationPage() {
             <HandHeart className="h-5 w-5 text-accent" />
             <h2 className="font-display text-lg font-bold">{PRAYER.title}</h2>
           </div>
-          <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/90">{PRAYER.body}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/90">{prayerBody}</p>
         </Card>
 
         {/* More motivations */}
