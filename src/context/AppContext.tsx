@@ -28,6 +28,7 @@ interface AppContextType {
   fetchProfileById: (userId: string) => Promise<User | null>;
   toggleLike: (postId: string) => Promise<void>;
   addComment: (postId: string, text: string) => Promise<void>;
+  deleteComment: (commentId: string) => Promise<void>;
   addPost: (type: 'text' | 'video', content: string, videoUrl?: string, meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   updateProfile: (patch: { username?: string; bio?: string; avatarUrl?: string }) => Promise<void>;
@@ -38,6 +39,7 @@ interface AppContextType {
   markConversationRead: (otherUserId: string) => Promise<void>;
   isAuthenticated: boolean;
   authReady: boolean;
+  isAdmin: boolean;
   session: Session | null;
   logout: () => Promise<void>;
 }
@@ -374,6 +376,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const deleteComment = async (commentId: string) => {
+    // Optimistic remove
+    setPosts(prev => prev.map(p => ({ ...p, comments: p.comments.filter(c => c.id !== commentId) })));
+    const { error } = await supabase.from('post_comments').delete().eq('id', commentId);
+    if (error) console.error('deleteComment error', error);
+  };
+
   const addPost = async (
     type: 'text' | 'video',
     content: string,
@@ -513,14 +522,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const users: User[] = profiles.length > 0 ? profiles : mockUsers;
 
+  // Admin role
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) { setIsAdmin(false); return; }
+    supabase.from('user_roles').select('role').eq('user_id', uid).eq('role', 'admin').maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data));
+  }, [session]);
+
   return (
     <AppContext.Provider value={{
       posts, setPosts, users, teachings, setTeachings,
       stories, addStory, deleteStory, markStoryViewed,
       messages, sendMessage, deleteMessage, markConversationRead,
-      user: fallbackUser, followedUsers, followerCounts, followingCounts, toggleFollow, fetchProfileById, toggleLike, addComment, addPost, deletePost,
+      user: fallbackUser, followedUsers, followerCounts, followingCounts, toggleFollow, fetchProfileById, toggleLike, addComment, deleteComment, addPost, deletePost,
       updateProfile, uploadAvatar,
-      isAuthenticated: !!session, authReady, session, logout,
+      isAuthenticated: !!session, authReady, isAdmin, session, logout,
     }}>
       {children}
     </AppContext.Provider>
