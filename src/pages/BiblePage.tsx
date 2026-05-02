@@ -12,12 +12,18 @@ import { useLang, Lang } from '@/context/LanguageContext';
 // Versions supported by bible-api.com
 const VERSIONS = [
   { id: 'kjv', label: 'King James Version (KJV)' },
+  { id: 'asv', label: 'American Standard (ASV)' },
   { id: 'web', label: 'World English Bible (WEB)' },
   { id: 'bbe', label: 'Bible in Basic English (BBE)' },
   { id: 'oeb-us', label: 'Open English Bible (US)' },
+  { id: 'oeb-cw', label: 'Open English Bible (Commonwealth)' },
+  { id: 'webbe', label: 'World English Bible (British)' },
+  { id: 'ylt', label: "Young's Literal Translation (YLT)" },
+  { id: 'dra', label: 'Douay-Rheims (DRA)' },
   { id: 'clementine', label: 'Clementine Latin Vulgate' },
   { id: 'almeida', label: 'João Ferreira de Almeida (PT)' },
   { id: 'rccv', label: 'Cornilescu (RO)' },
+  { id: 'rvr1909', label: 'Reina-Valera 1909 (ES)' },
 ];
 
 const LANGUAGES = [
