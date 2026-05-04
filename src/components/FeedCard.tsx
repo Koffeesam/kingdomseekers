@@ -156,6 +156,8 @@ export default function FeedCard({ post }: { post: Post }) {
         open={avatarOpen}
         onClose={() => setAvatarOpen(false)}
       />
+
+      <SharePostDialog post={post} open={shareOpen} onOpenChange={setShareOpen} />
     </article>
   );
 }
