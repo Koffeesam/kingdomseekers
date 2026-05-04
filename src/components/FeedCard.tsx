@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { Link } from 'react-router-dom';
 import PostActionsMenu from '@/components/PostActionsMenu';
 import AvatarViewer from '@/components/AvatarViewer';
+import SharePostDialog from '@/components/SharePostDialog';
 import { useLang } from '@/context/LanguageContext';
 
 export default function FeedCard({ post }: { post: Post }) {
@@ -13,6 +14,7 @@ export default function FeedCard({ post }: { post: Post }) {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const handleComment = () => {
     if (!commentText.trim()) return;
@@ -96,6 +98,15 @@ export default function FeedCard({ post }: { post: Post }) {
           <MessageCircle size={20} />
           <span>{post.comments.length}</span>
           {showComments ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+
+        <button
+          onClick={() => setShareOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors ml-auto"
+          aria-label={t('share')}
+        >
+          <Send size={18} />
+          <span className="hidden sm:inline">{t('share')}</span>
         </button>
       </div>
 
