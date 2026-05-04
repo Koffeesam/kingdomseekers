@@ -95,6 +95,17 @@ export default function LivePage() {
             <span className="text-xs text-muted-foreground">KSF Thika Road</span>
           </div>
 
+          {isAdmin && (
+            <button
+              onClick={handleGoLive}
+              disabled={announcing}
+              className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-95 transition disabled:opacity-50"
+            >
+              <Radio size={16} />
+              {announcing ? 'Sending...' : 'Notify believers — Pastor is LIVE'}
+            </button>
+          )}
+
           {isLiveDay ? (
             <div className="rounded-xl overflow-hidden aspect-video bg-foreground/5">
               <iframe
