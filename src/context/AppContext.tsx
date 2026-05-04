@@ -353,19 +353,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const toggleLike = async (postId: string) => {
     if (!session?.user) return;
-    const uid = session.user.id;
     const post = posts.find(p => p.id === postId);
     if (!post) return;
     // Optimistic
     setPosts(prev => prev.map(p => p.id === postId
       ? { ...p, liked: !p.liked, likes: Math.max(0, p.likes + (p.liked ? -1 : 1)) }
       : p));
-    if (post.liked) {
-      await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', uid);
-      await supabase.from('posts').update({ likes: Math.max(0, post.likes - 1) }).eq('id', postId);
-    } else {
-      await supabase.from('post_likes').insert({ post_id: postId, user_id: uid });
-      await supabase.from('posts').update({ likes: post.likes + 1 }).eq('id', postId);
+    const { error } = await supabase.rpc('toggle_post_like', { _post_id: postId });
+    if (error) {
+      console.error('toggle_post_like error', error);
+      // Revert optimistic update
+      setPosts(prev => prev.map(p => p.id === postId
+        ? { ...p, liked: post.liked, likes: post.likes }
+        : p));
     }
   };
 
