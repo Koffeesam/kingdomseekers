@@ -447,6 +447,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      toggle_post_like: {
+        Args: { _post_id: string }
+        Returns: {
+          liked: boolean
+          likes: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
