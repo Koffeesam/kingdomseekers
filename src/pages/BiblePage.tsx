@@ -106,6 +106,29 @@ interface Verse { book_name: string; chapter: number; verse: number; text: strin
 
 type View = 'books' | 'chapters' | 'reader';
 
+async function fetchFromBibleApi(translation: string, bookName: string, chapter: number): Promise<Verse[]> {
+  const ref = `${bookName} ${chapter}`;
+  const r = await fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=${translation}`);
+  const data = await r.json();
+  return (data.verses ?? []) as Verse[];
+}
+
+async function fetchFromBolls(translation: string, bookName: string, chapter: number): Promise<Verse[]> {
+  const bookIdx = BOLLS_BOOK_INDEX[bookName];
+  if (!bookIdx) return [];
+  const r = await fetch(`https://bolls.life/get-text/${translation}/${bookIdx}/${chapter}/`);
+  if (!r.ok) return [];
+  const data: Array<{ verse: number; text: string }> = await r.json();
+  // Strip HTML tags (some bolls translations include <S>, <i>, <pb/>, footnotes etc.)
+  const stripHtml = (s: string) => s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  return data.map(v => ({
+    book_name: bookName,
+    chapter,
+    verse: v.verse,
+    text: stripHtml(v.text),
+  }));
+}
+
 export default function BiblePage() {
   const { lang, setLang, t, bibleTranslation } = useLang();
   // Default to user's language preference but DO NOT overwrite later — the
