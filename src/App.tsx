@@ -7,6 +7,7 @@ import { AppProvider, useApp } from "@/context/AppContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import BottomNav from "@/components/BottomNav";
 import { CallManager } from "@/components/CallManager";
+import { NotificationsManager } from "@/components/NotificationsManager";
 import HomePage from "./pages/HomePage";
 import UploadPage from "./pages/UploadPage";
 import LivePage from "./pages/LivePage";
@@ -49,6 +50,7 @@ function AppLayout() {
 
   return (
     <CallManager>
+      <NotificationsManager />
       <Routes>
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
         <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />

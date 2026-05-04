@@ -1,18 +1,40 @@
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Heart, MessageCircle, Send, ChevronDown, ChevronUp } from 'lucide-react';
+import { Heart, MessageCircle, Send, ChevronDown, ChevronUp, Radio } from 'lucide-react';
 import ksfLogo from '@/assets/ksf-logo.png';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const CHANNEL_ID = 'UCvHvwe3wVCEibxBpFEs8oqw';
 
 export default function LivePage() {
-  const { teachings, setTeachings } = useApp();
+  const { teachings, setTeachings, isAdmin, session } = useApp();
   const [expandedTeaching, setExpandedTeaching] = useState<string | null>(null);
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+  const [announcing, setAnnouncing] = useState(false);
 
   const today = new Date();
   const dayOfWeek = today.getDay();
   const isLiveDay = dayOfWeek === 5 || dayOfWeek === 0; // Fri or Sun
+
+  const handleGoLive = async () => {
+    if (!session?.user) return;
+    setAnnouncing(true);
+    const { error } = await supabase.from('live_announcements').insert({
+      title: 'Pastor is live now',
+      message: 'Join the live teaching at KSF Thika Road 🙏',
+      stream_url: `https://www.youtube.com/embed/live_stream?channel=${CHANNEL_ID}`,
+      active: true,
+      created_by: session.user.id,
+    });
+    setAnnouncing(false);
+    if (error) {
+      toast.error('Could not send announcement');
+      console.error(error);
+    } else {
+      toast.success('Believers have been notified');
+    }
+  };
 
   const toggleTeachingLike = (id: string) => {
     setTeachings(prev => prev.map(t =>
@@ -72,6 +94,17 @@ export default function LivePage() {
             )}
             <span className="text-xs text-muted-foreground">KSF Thika Road</span>
           </div>
+
+          {isAdmin && (
+            <button
+              onClick={handleGoLive}
+              disabled={announcing}
+              className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-95 transition disabled:opacity-50"
+            >
+              <Radio size={16} />
+              {announcing ? 'Sending...' : 'Notify believers — Pastor is LIVE'}
+            </button>
+          )}
 
           {isLiveDay ? (
             <div className="rounded-xl overflow-hidden aspect-video bg-foreground/5">
