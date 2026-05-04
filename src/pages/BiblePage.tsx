@@ -9,22 +9,53 @@ import TopNav from '@/components/TopNav';
 import { toast } from 'sonner';
 import { useLang, Lang } from '@/context/LanguageContext';
 
-// Versions supported by bible-api.com
-const VERSIONS = [
-  { id: 'kjv', label: 'King James Version (KJV)' },
-  { id: 'asv', label: 'American Standard (ASV)' },
-  { id: 'web', label: 'World English Bible (WEB)' },
-  { id: 'bbe', label: 'Bible in Basic English (BBE)' },
-  { id: 'oeb-us', label: 'Open English Bible (US)' },
-  { id: 'oeb-cw', label: 'Open English Bible (Commonwealth)' },
-  { id: 'webbe', label: 'World English Bible (British)' },
-  { id: 'ylt', label: "Young's Literal Translation (YLT)" },
-  { id: 'dra', label: 'Douay-Rheims (DRA)' },
-  { id: 'clementine', label: 'Clementine Latin Vulgate' },
-  { id: 'almeida', label: 'João Ferreira de Almeida (PT)' },
-  { id: 'rccv', label: 'Cornilescu (RO)' },
-  { id: 'rvr1909', label: 'Reina-Valera 1909 (ES)' },
+// Versions: each is served either by bible-api.com (free public-domain set)
+// or by bolls.life (broader catalog including modern translations like NLT, NKJV, MSG, NIV).
+type Source = 'bible-api' | 'bolls';
+interface VersionDef { id: string; label: string; source: Source; bollsId?: string; }
+const VERSIONS: VersionDef[] = [
+  // Modern translations via bolls.life
+  { id: 'NIV',   label: 'New International Version (NIV)',  source: 'bolls', bollsId: 'NIV' },
+  { id: 'NLT',   label: 'New Living Translation (NLT)',     source: 'bolls', bollsId: 'NLT' },
+  { id: 'NKJV',  label: 'New King James Version (NKJV)',    source: 'bolls', bollsId: 'NKJV' },
+  { id: 'MSG',   label: 'The Message (MSG)',                source: 'bolls', bollsId: 'MSG' },
+  { id: 'AMP',   label: 'Amplified Bible (AMP)',            source: 'bolls', bollsId: 'AMP' },
+  { id: 'ESV',   label: 'English Standard Version (ESV)',   source: 'bolls', bollsId: 'ESV' },
+  { id: 'NIRV',  label: "New Int'l Reader's Version (NIrV)", source: 'bolls', bollsId: 'NIRV' },
+  { id: 'CSB',   label: 'Christian Standard Bible (CSB)',   source: 'bolls', bollsId: 'CSB' },
+  // Public-domain translations via bible-api.com
+  { id: 'kjv',        label: 'King James Version (KJV)',     source: 'bible-api' },
+  { id: 'asv',        label: 'American Standard (ASV)',      source: 'bible-api' },
+  { id: 'web',        label: 'World English Bible (WEB)',    source: 'bible-api' },
+  { id: 'webbe',      label: 'World English Bible (British)', source: 'bible-api' },
+  { id: 'bbe',        label: 'Bible in Basic English (BBE)', source: 'bible-api' },
+  { id: 'ylt',        label: "Young's Literal Translation",  source: 'bible-api' },
+  { id: 'dra',        label: 'Douay-Rheims (DRA)',           source: 'bible-api' },
+  { id: 'oeb-us',     label: 'Open English Bible (US)',      source: 'bible-api' },
+  { id: 'oeb-cw',     label: 'Open English Bible (CW)',      source: 'bible-api' },
+  { id: 'clementine', label: 'Clementine Latin Vulgate',     source: 'bible-api' },
+  { id: 'almeida',    label: 'João F. de Almeida (PT)',      source: 'bible-api' },
+  { id: 'rccv',       label: 'Cornilescu (RO)',              source: 'bible-api' },
+  { id: 'rvr1909',    label: 'Reina-Valera 1909 (ES)',       source: 'bible-api' },
 ];
+
+// 1-indexed canonical book order used by bolls.life
+const BOLLS_BOOK_INDEX: Record<string, number> = {
+  'Genesis': 1, 'Exodus': 2, 'Leviticus': 3, 'Numbers': 4, 'Deuteronomy': 5,
+  'Joshua': 6, 'Judges': 7, 'Ruth': 8, '1 Samuel': 9, '2 Samuel': 10,
+  '1 Kings': 11, '2 Kings': 12, '1 Chronicles': 13, '2 Chronicles': 14, 'Ezra': 15,
+  'Nehemiah': 16, 'Esther': 17, 'Job': 18, 'Psalms': 19, 'Proverbs': 20,
+  'Ecclesiastes': 21, 'Song of Solomon': 22, 'Isaiah': 23, 'Jeremiah': 24, 'Lamentations': 25,
+  'Ezekiel': 26, 'Daniel': 27, 'Hosea': 28, 'Joel': 29, 'Amos': 30,
+  'Obadiah': 31, 'Jonah': 32, 'Micah': 33, 'Nahum': 34, 'Habakkuk': 35,
+  'Zephaniah': 36, 'Haggai': 37, 'Zechariah': 38, 'Malachi': 39,
+  'Matthew': 40, 'Mark': 41, 'Luke': 42, 'John': 43, 'Acts': 44,
+  'Romans': 45, '1 Corinthians': 46, '2 Corinthians': 47, 'Galatians': 48, 'Ephesians': 49,
+  'Philippians': 50, 'Colossians': 51, '1 Thessalonians': 52, '2 Thessalonians': 53,
+  '1 Timothy': 54, '2 Timothy': 55, 'Titus': 56, 'Philemon': 57, 'Hebrews': 58,
+  'James': 59, '1 Peter': 60, '2 Peter': 61, '1 John': 62, '2 John': 63,
+  '3 John': 64, 'Jude': 65, 'Revelation': 66,
+};
 
 const LANGUAGES = [
   { id: 'en', label: 'English' },
@@ -77,7 +108,12 @@ type View = 'books' | 'chapters' | 'reader';
 
 export default function BiblePage() {
   const { lang, setLang, t, bibleTranslation } = useLang();
-  const [version, setVersion] = useState(bibleTranslation);
+  // Default to user's language preference but DO NOT overwrite later — the
+  // user can freely pick any translation regardless of UI language.
+  const [version, setVersion] = useState<string>(() => {
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('ks_bible_version') : null;
+    return stored || bibleTranslation || 'kjv';
+  });
   const [view, setView] = useState<View>('books');
   const [book, setBook] = useState<typeof BOOKS[number] | null>(null);
   const [chapter, setChapter] = useState<number>(1);
@@ -85,24 +121,26 @@ export default function BiblePage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
 
-  // When global language changes, switch Bible translation accordingly
-  useEffect(() => { setVersion(bibleTranslation); }, [bibleTranslation]);
+  // Persist selected translation
+  useEffect(() => { localStorage.setItem('ks_bible_version', version); }, [version]);
 
   // Load chapter when reader is opened
   useEffect(() => {
     if (view !== 'reader' || !book) return;
-    const ref = `${book.name} ${chapter}`;
     setLoading(true);
     setVerses([]);
-    fetch(`https://bible-api.com/${encodeURIComponent(ref)}?translation=${version}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.verses) setVerses(data.verses);
-        else toast.error('Could not load chapter');
+    const def = VERSIONS.find(v => v.id === version) ?? VERSIONS[0];
+    const fetchPromise = def.source === 'bolls'
+      ? fetchFromBolls(def.bollsId!, book.name, chapter)
+      : fetchFromBibleApi(def.id, book.name, chapter);
+    fetchPromise
+      .then(vs => {
+        if (vs.length) setVerses(vs);
+        else toast.error(t('bible_version_unavailable'));
       })
-      .catch(() => toast.error('Network error loading Bible'))
+      .catch(() => toast.error(t('bible_version_unavailable')))
       .finally(() => setLoading(false));
-  }, [view, book, chapter, version]);
+  }, [view, book, chapter, version, t]);
 
   const filteredBooks = BOOKS.filter(b => b.name.toLowerCase().includes(search.toLowerCase()));
 
