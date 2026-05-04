@@ -1,13 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Film, Heart, MessageCircle, Volume2, VolumeX } from 'lucide-react';
+import { Film, Heart, MessageCircle, Send, Volume2, VolumeX } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
 import { Post } from '@/types';
+import SharePostDialog from '@/components/SharePostDialog';
 
 function ReelItem({ post, muted, onToggleMute }: { post: Post; muted: boolean; onToggleMute: () => void }) {
   const { toggleLike } = useApp();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   // Autoplay/pause based on visibility within the snap container
   useEffect(() => {
@@ -75,6 +76,16 @@ function ReelItem({ post, muted, onToggleMute }: { post: Post; muted: boolean; o
           <span className="text-[11px] font-medium">{post.comments.length}</span>
         </div>
         <button
+          onClick={() => setShareOpen(true)}
+          className="flex flex-col items-center gap-1"
+          aria-label="Share"
+        >
+          <div className="w-11 h-11 rounded-full bg-white/15 backdrop-blur flex items-center justify-center">
+            <Send size={20} />
+          </div>
+          <span className="text-[11px] font-medium">Share</span>
+        </button>
+        <button
           onClick={onToggleMute}
           className="w-11 h-11 rounded-full bg-white/15 backdrop-blur flex items-center justify-center"
           aria-label={muted ? 'Unmute' : 'Mute'}
@@ -82,6 +93,8 @@ function ReelItem({ post, muted, onToggleMute }: { post: Post; muted: boolean; o
           {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
         </button>
       </div>
+
+      <SharePostDialog post={post} open={shareOpen} onOpenChange={setShareOpen} />
     </section>
   );
 }

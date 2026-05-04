@@ -30,6 +30,10 @@ const dict: Record<Lang, Record<string, string>> = {
     cancel: 'Cancel',
     confirm_delete: 'Delete this post?',
     write_comment: 'Write a comment...',
+    share: 'Share',
+    share_with_believer: 'Share with a believer',
+    shared: 'Shared',
+    bible_version_unavailable: 'This translation is not available right now.',
   },
   sw: {
     settings: 'Mipangilio',
@@ -58,6 +62,10 @@ const dict: Record<Lang, Record<string, string>> = {
     cancel: 'Ghairi',
     confirm_delete: 'Futa chapisho hili?',
     write_comment: 'Andika maoni...',
+    share: 'Shiriki',
+    share_with_believer: 'Shiriki na muumini',
+    shared: 'Imeshirikiwa',
+    bible_version_unavailable: 'Tafsiri hii haipatikani sasa.',
   },
   fr: {
     settings: 'Paramètres',
@@ -86,6 +94,10 @@ const dict: Record<Lang, Record<string, string>> = {
     cancel: 'Annuler',
     confirm_delete: 'Supprimer cette publication ?',
     write_comment: 'Écrire un commentaire...',
+    share: 'Partager',
+    share_with_believer: 'Partager avec un croyant',
+    shared: 'Partagé',
+    bible_version_unavailable: 'Cette traduction n’est pas disponible pour le moment.',
   },
   es: {
     settings: 'Ajustes',
@@ -114,6 +126,10 @@ const dict: Record<Lang, Record<string, string>> = {
     cancel: 'Cancelar',
     confirm_delete: '¿Eliminar esta publicación?',
     write_comment: 'Escribe un comentario...',
+    share: 'Compartir',
+    share_with_believer: 'Compartir con un creyente',
+    shared: 'Compartido',
+    bible_version_unavailable: 'Esta traducción no está disponible ahora.',
   },
 };
 
