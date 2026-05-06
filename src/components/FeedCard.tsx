@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, ChevronDown, ChevronUp, Send, Play, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, ChevronDown, ChevronUp, Send, Play, Trash2, FileText, Link2, Download } from 'lucide-react';
 import { Post } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { Link } from 'react-router-dom';
@@ -74,6 +74,52 @@ export default function FeedCard({ post }: { post: Post }) {
             </span>
           )}
         </div>
+      )}
+
+      {post.type === 'image' && post.imageUrl && (
+        <div className="relative mt-3 mx-4 rounded-xl overflow-hidden bg-muted">
+          <img
+            src={post.imageUrl}
+            alt={post.content || 'Post image'}
+            loading="lazy"
+            className="w-full max-h-[520px] object-cover"
+          />
+        </div>
+      )}
+
+      {post.type === 'document' && post.documentUrl && (
+        <a
+          href={post.documentUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 mx-4 flex items-center gap-3 p-3 rounded-xl bg-muted hover:bg-muted/70 transition-colors border border-border"
+        >
+          <div className="shrink-0 w-10 h-10 rounded-lg gold-gradient flex items-center justify-center text-primary-foreground">
+            <FileText size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{post.documentName || 'Document'}</p>
+            <p className="text-[11px] text-muted-foreground">Tap to open</p>
+          </div>
+          <Download size={16} className="text-muted-foreground" />
+        </a>
+      )}
+
+      {post.type === 'link' && post.linkUrl && (
+        <a
+          href={post.linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 mx-4 flex items-center gap-3 p-3 rounded-xl bg-muted hover:bg-muted/70 transition-colors border border-border"
+        >
+          <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center text-primary">
+            <Link2 size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-primary truncate">{post.linkUrl}</p>
+            <p className="text-[11px] text-muted-foreground">Open link</p>
+          </div>
+        </a>
       )}
 
       {/* Actions */}
