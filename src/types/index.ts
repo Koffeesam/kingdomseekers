@@ -21,12 +21,16 @@ export interface Post {
   userId: string;
   username: string;
   avatar: string;
-  type: 'text' | 'video';
+  type: 'text' | 'video' | 'image' | 'document' | 'link';
   content: string;
   videoUrl?: string;
   thumbnail?: string;
   videoCategory?: 'short' | 'reel';
   videoDuration?: number;
+  imageUrl?: string;
+  documentUrl?: string;
+  documentName?: string;
+  linkUrl?: string;
   likes: number;
   liked: boolean;
   comments: Comment[];

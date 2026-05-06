@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Camera, FileText, CheckCircle, X, Upload as UploadIcon, Film, Clock } from 'lucide-react';
+import { Camera, FileText, CheckCircle, X, Upload as UploadIcon, Film, Clock, Image as ImageIcon, Link2, FileUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
+const MAX_MEDIA_BYTES = 10 * 1024 * 1024; // 10 MB for images/documents
 
-type UploadMode = 'text' | 'short' | 'reel';
+type UploadMode = 'text' | 'short' | 'reel' | 'photo' | 'document' | 'link';
 
 const probeVideoDuration = (file: File): Promise<number> => new Promise((resolve) => {
   const url = URL.createObjectURL(file);
@@ -19,7 +20,7 @@ const probeVideoDuration = (file: File): Promise<number> => new Promise((resolve
 });
 
 export default function UploadPage() {
-  const { addPost, session } = useApp();
+  const { addPost, session, uploadPostMedia } = useApp();
   const navigate = useNavigate();
   const [mode, setMode] = useState<UploadMode>('text');
   const [content, setContent] = useState('');
@@ -27,8 +28,14 @@ export default function UploadPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [linkUrl, setLinkUrl] = useState('');
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   const handleVideoSelected = async (file: File | null) => {
     if (!file) return;
@@ -56,13 +63,83 @@ export default function UploadPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const isVideoMode = mode === 'short' || mode === 'reel';
+  const clearImage = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+    if (photoInputRef.current) photoInputRef.current.value = '';
+  };
+
+  const clearDoc = () => {
+    setDocFile(null);
+    if (docInputRef.current) docInputRef.current.value = '';
+  };
+
+  const handleImageSelected = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Please select an image'); return; }
+    if (file.size > MAX_MEDIA_BYTES) { toast.error('Image must be under 10 MB'); return; }
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleDocSelected = (file: File | null) => {
+    if (!file) return;
+    if (file.size > MAX_MEDIA_BYTES) { toast.error('File must be under 10 MB'); return; }
+    setDocFile(file);
+  };
 
   const handleSubmit = async () => {
     if (mode === 'text') {
       if (!content.trim()) return;
       addPost('text', content.trim());
       finish();
+      return;
+    }
+
+    if (mode === 'photo') {
+      if (!imageFile) { toast.error('Pick a photo first'); return; }
+      if (!session?.user) { toast.error('You need to be signed in'); return; }
+      const file = imageFile;
+      const caption = content.trim();
+      toast.message('Uploading photo…');
+      finish('/');
+      (async () => {
+        try {
+          const { url } = await uploadPostMedia(file);
+          await addPost('image', caption, undefined, { imageUrl: url });
+          toast.success('Photo posted ✓');
+        } catch (e: any) { toast.error(e?.message || 'Upload failed'); }
+      })();
+      return;
+    }
+
+    if (mode === 'document') {
+      if (!docFile) { toast.error('Pick a document first'); return; }
+      if (!session?.user) { toast.error('You need to be signed in'); return; }
+      const file = docFile;
+      const caption = content.trim();
+      toast.message('Uploading document…');
+      finish('/');
+      (async () => {
+        try {
+          const { url, name } = await uploadPostMedia(file);
+          await addPost('document', caption, undefined, { documentUrl: url, documentName: name });
+          toast.success('Document posted ✓');
+        } catch (e: any) { toast.error(e?.message || 'Upload failed'); }
+      })();
+      return;
+    }
+
+    if (mode === 'link') {
+      const raw = linkUrl.trim();
+      if (!raw) { toast.error('Paste a link first'); return; }
+      let normalized = raw;
+      if (!/^https?:\/\//i.test(normalized)) normalized = `https://${normalized}`;
+      try { new URL(normalized); } catch { toast.error('That doesn\'t look like a valid link'); return; }
+      await addPost('link', content.trim(), undefined, { linkUrl: normalized });
+      finish('/');
       return;
     }
 
@@ -106,6 +183,9 @@ export default function UploadPage() {
       setSubmitted(false);
       setContent('');
       clearVideo();
+      clearImage();
+      clearDoc();
+      setLinkUrl('');
       navigate(to);
     }, 900);
   };
@@ -131,7 +211,7 @@ export default function UploadPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 pt-6">
-        <div className="grid grid-cols-3 gap-2 mb-6">
+        <div className="grid grid-cols-3 gap-2 mb-3">
           <button
             onClick={() => { setMode('text'); clearVideo(); }}
             className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl font-medium text-xs transition-all ${
@@ -160,6 +240,33 @@ export default function UploadPage() {
           </button>
         </div>
 
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          <button
+            onClick={() => { setMode('photo'); clearVideo(); clearDoc(); }}
+            className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl font-medium text-xs transition-all ${
+              mode === 'photo' ? 'gold-gradient text-primary-foreground shadow-lg' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <ImageIcon size={18} /> Photo
+          </button>
+          <button
+            onClick={() => { setMode('document'); clearVideo(); clearImage(); }}
+            className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl font-medium text-xs transition-all ${
+              mode === 'document' ? 'gold-gradient text-primary-foreground shadow-lg' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <FileUp size={18} /> Document
+          </button>
+          <button
+            onClick={() => { setMode('link'); clearVideo(); clearImage(); clearDoc(); }}
+            className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl font-medium text-xs transition-all ${
+              mode === 'link' ? 'gold-gradient text-primary-foreground shadow-lg' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            <Link2 size={18} /> Link
+          </button>
+        </div>
+
         {mode === 'text' ? (
           <textarea
             value={content}
@@ -169,6 +276,90 @@ export default function UploadPage() {
             maxLength={1000}
             className="w-full bg-card border border-border rounded-2xl p-4 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
           />
+        ) : mode === 'photo' ? (
+          <div className="space-y-4">
+            {imagePreview ? (
+              <div className="relative bg-card border border-border rounded-2xl overflow-hidden">
+                <img src={imagePreview} alt="preview" className="w-full max-h-[60vh] object-contain bg-black" />
+                <button onClick={clearImage} className="absolute top-2 right-2 bg-background/80 hover:bg-background rounded-full p-1.5">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center gap-3">
+                <ImageIcon size={40} className="text-primary" />
+                <p className="text-sm text-foreground font-medium">Share a photo</p>
+                <p className="text-xs text-muted-foreground">Up to 10 MB · JPG, PNG, WEBP, GIF</p>
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl gold-gradient text-primary-foreground font-medium text-sm shadow-lg active:scale-[0.98]"
+                >
+                  <UploadIcon size={16} /> Choose photo
+                </button>
+                <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
+                  onChange={e => handleImageSelected(e.target.files?.[0] ?? null)} />
+              </div>
+            )}
+            <textarea
+              value={content} onChange={e => setContent(e.target.value)}
+              placeholder="Add a caption (optional)..." rows={3} maxLength={500}
+              className="w-full bg-card border border-border rounded-2xl p-4 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+            />
+          </div>
+        ) : mode === 'document' ? (
+          <div className="space-y-4">
+            {docFile ? (
+              <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg gold-gradient flex items-center justify-center text-primary-foreground">
+                  <FileText size={22} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{docFile.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{(docFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                </div>
+                <button onClick={clearDoc} className="text-muted-foreground hover:text-destructive p-1.5">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center gap-3">
+                <FileUp size={40} className="text-primary" />
+                <p className="text-sm text-foreground font-medium">Share a document</p>
+                <p className="text-xs text-muted-foreground">Up to 10 MB · PDF, Word, Excel, PPT, TXT, CSV</p>
+                <button
+                  onClick={() => docInputRef.current?.click()}
+                  className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl gold-gradient text-primary-foreground font-medium text-sm shadow-lg active:scale-[0.98]"
+                >
+                  <UploadIcon size={16} /> Choose document
+                </button>
+                <input ref={docInputRef} type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,application/pdf"
+                  className="hidden"
+                  onChange={e => handleDocSelected(e.target.files?.[0] ?? null)} />
+              </div>
+            )}
+            <textarea
+              value={content} onChange={e => setContent(e.target.value)}
+              placeholder="Add a description (optional)..." rows={3} maxLength={500}
+              className="w-full bg-card border border-border rounded-2xl p-4 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+            />
+          </div>
+        ) : mode === 'link' ? (
+          <div className="space-y-4">
+            <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
+              <Link2 size={20} className="text-primary shrink-0" />
+              <input
+                value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
+                placeholder="https://example.com" inputMode="url"
+                className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+            <textarea
+              value={content} onChange={e => setContent(e.target.value)}
+              placeholder="Add a note about this link (optional)..." rows={3} maxLength={500}
+              className="w-full bg-card border border-border rounded-2xl p-4 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+            />
+          </div>
         ) : (
           <div className="space-y-4">
             {videoPreview ? (
@@ -256,10 +447,21 @@ export default function UploadPage() {
 
         <button
           onClick={handleSubmit}
-          disabled={mode === 'text' ? !content.trim() : !videoFile}
+          disabled={
+            mode === 'text' ? !content.trim()
+            : mode === 'photo' ? !imageFile
+            : mode === 'document' ? !docFile
+            : mode === 'link' ? !linkUrl.trim()
+            : !videoFile
+          }
           className="w-full mt-4 py-3.5 rounded-xl font-semibold text-sm gold-gradient text-primary-foreground shadow-lg disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         >
-          {mode === 'reel' ? 'Post Reel ✝️' : mode === 'short' ? 'Post Short ✝️' : 'Share Testimony ✝️'}
+          {mode === 'reel' ? 'Post Reel ✝️'
+            : mode === 'short' ? 'Post Short ✝️'
+            : mode === 'photo' ? 'Post Photo ✝️'
+            : mode === 'document' ? 'Post Document ✝️'
+            : mode === 'link' ? 'Post Link ✝️'
+            : 'Share Testimony ✝️'}
         </button>
 
         <div className="mt-6 bg-muted/50 rounded-xl p-4">

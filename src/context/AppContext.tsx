@@ -29,7 +29,20 @@ interface AppContextType {
   toggleLike: (postId: string) => Promise<void>;
   addComment: (postId: string, text: string) => Promise<void>;
   deleteComment: (commentId: string) => Promise<void>;
-  addPost: (type: 'text' | 'video', content: string, videoUrl?: string, meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }) => Promise<void>;
+  addPost: (
+    type: 'text' | 'video' | 'image' | 'document' | 'link',
+    content: string,
+    videoUrl?: string,
+    meta?: {
+      videoCategory?: 'short' | 'reel';
+      videoDuration?: number;
+      imageUrl?: string;
+      documentUrl?: string;
+      documentName?: string;
+      linkUrl?: string;
+    }
+  ) => Promise<void>;
+  uploadPostMedia: (file: File) => Promise<{ url: string; name: string }>;
   deletePost: (postId: string) => Promise<void>;
   updateProfile: (patch: { username?: string; bio?: string; avatarUrl?: string }) => Promise<void>;
   uploadAvatar: (file: File) => Promise<string>;
@@ -114,6 +127,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       videoUrl: row.video_url ?? undefined,
       videoCategory: row.video_category ?? undefined,
       videoDuration: row.video_duration ?? undefined,
+      imageUrl: row.image_url ?? undefined,
+      documentUrl: row.document_url ?? undefined,
+      documentName: row.document_name ?? undefined,
+      linkUrl: row.link_url ?? undefined,
       likes: row.likes ?? 0,
       liked: !!myUid && likedSet.has(row.id),
       comments: cs.map(c => {
@@ -384,10 +401,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addPost = async (
-    type: 'text' | 'video',
+    type: 'text' | 'video' | 'image' | 'document' | 'link',
     content: string,
     videoUrl?: string,
-    meta?: { videoCategory?: 'short' | 'reel'; videoDuration?: number }
+    meta?: {
+      videoCategory?: 'short' | 'reel';
+      videoDuration?: number;
+      imageUrl?: string;
+      documentUrl?: string;
+      documentName?: string;
+      linkUrl?: string;
+    }
   ) => {
     if (!session?.user) return;
     const { data, error } = await supabase.from('posts').insert({
@@ -397,6 +421,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       video_url: videoUrl ?? null,
       video_category: meta?.videoCategory ?? null,
       video_duration: meta?.videoDuration ?? null,
+      image_url: meta?.imageUrl ?? null,
+      document_url: meta?.documentUrl ?? null,
+      document_name: meta?.documentName ?? null,
+      link_url: meta?.linkUrl ?? null,
     }).select('*').single();
     if (error) { console.error('addPost error', error); return; }
     // Optimistic prepend so the post appears immediately for the author —
@@ -408,11 +436,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         userId: data.user_id,
         username: author?.username ?? fallbackUser.username,
         avatar: author?.avatar ?? fallbackUser.avatar,
-        type: data.type as 'text' | 'video',
+        type: data.type as Post['type'],
         content: data.content ?? '',
         videoUrl: data.video_url ?? undefined,
         videoCategory: (data.video_category as 'short' | 'reel' | null) ?? undefined,
         videoDuration: data.video_duration ?? undefined,
+        imageUrl: (data as any).image_url ?? undefined,
+        documentUrl: (data as any).document_url ?? undefined,
+        documentName: (data as any).document_name ?? undefined,
+        linkUrl: (data as any).link_url ?? undefined,
         likes: 0,
         liked: false,
         comments: [],
@@ -425,6 +457,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deletePost = async (postId: string) => {
     const { error } = await supabase.from('posts').delete().eq('id', postId);
     if (error) console.error('deletePost error', error);
+  };
+
+  const uploadPostMedia = async (file: File): Promise<{ url: string; name: string }> => {
+    if (!session?.user) throw new Error('Not signed in');
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+    const path = `${session.user.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage
+      .from('post-media')
+      .upload(path, file, { contentType: file.type, upsert: false, cacheControl: '3600' });
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from('post-media').getPublicUrl(path);
+    return { url: publicUrl, name: file.name };
   };
 
   // ---- Profile ops ----
@@ -537,7 +581,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       stories, addStory, deleteStory, markStoryViewed,
       messages, sendMessage, deleteMessage, markConversationRead,
       user: fallbackUser, followedUsers, followerCounts, followingCounts, toggleFollow, fetchProfileById, toggleLike, addComment, deleteComment, addPost, deletePost,
-      updateProfile, uploadAvatar,
+      updateProfile, uploadAvatar, uploadPostMedia,
       isAuthenticated: !!session, authReady, isAdmin, session, logout,
     }}>
       {children}
