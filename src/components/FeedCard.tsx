@@ -187,6 +187,7 @@ export default function FeedCard({ post }: { post: Post }) {
               onChange={e => setCommentText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleComment()}
               placeholder={t('write_comment')}
+              maxLength={1000}
               className="flex-1 bg-muted rounded-full px-4 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/30"
             />
             <button onClick={handleComment} className="text-primary hover:text-primary/80 transition-colors p-1">
