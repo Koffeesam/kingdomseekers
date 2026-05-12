@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, BookOpen, MessageCircle, Sparkles, HandHeart, Settings, HelpCircle, LogOut, Camera, Calendar } from 'lucide-react';
+import { Menu, BookOpen, MessageCircle, Sparkles, HandHeart, Settings, HelpCircle, LogOut, Camera, Calendar, ShieldCheck } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
@@ -19,7 +19,7 @@ const menuItems = [
 
 export default function TopNav() {
   const [open, setOpen] = useState(false);
-  const { logout, messages, user } = useApp();
+  const { logout, messages, user, isAdmin } = useApp();
   const navigate = useNavigate();
   const unread = messages.filter(m => m.toUserId === user.id && !m.read).length;
 
@@ -55,6 +55,16 @@ export default function TopNav() {
         </SheetHeader>
 
         <nav className="flex-1 overflow-y-auto py-2">
+          {isAdmin && (
+            <Link
+              to="/admin/moderation"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-6 py-3 text-sm font-medium hover:bg-secondary transition-colors relative"
+            >
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <span>Moderation</span>
+            </Link>
+          )}
           {menuItems.map(({ to, icon: Icon, label }) => (
             <Link
               key={to}
