@@ -47,7 +47,9 @@ export default function AdminModerationPage() {
     const { data: profs } = ids.length
       ? await supabase.from('profiles').select('user_id, username, avatar_url').in('user_id', ids)
       : { data: [] as any[] } as any;
-    const profMap = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
+    const profMap = new Map<string, { username: string; avatar_url: string | null }>(
+      ((profs ?? []) as any[]).map((p: any) => [p.user_id, { username: p.username, avatar_url: p.avatar_url }])
+    );
     setPosts(((rows ?? []) as any[]).map(r => ({
       ...r,
       username: profMap.get(r.user_id)?.username ?? 'believer',
