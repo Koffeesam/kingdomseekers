@@ -47,7 +47,19 @@ export default function FeedCard({ post }: { post: Post }) {
           >
             {post.username}
           </Link>
-          <p className="text-[11px] text-muted-foreground">{post.timestamp}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {post.timestamp}
+            {post.status === 'pending' && (
+              <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
+                Pending review
+              </span>
+            )}
+            {post.status === 'rejected' && (
+              <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded bg-destructive/15 text-destructive text-[10px] font-semibold">
+                Rejected
+              </span>
+            )}
+          </p>
         </div>
         <PostActionsMenu post={post} />
       </div>
