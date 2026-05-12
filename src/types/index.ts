@@ -33,6 +33,7 @@ export interface Post {
   linkUrl?: string;
   likes: number;
   liked: boolean;
+  status?: 'pending' | 'approved' | 'rejected';
   comments: Comment[];
   timestamp: string;
 }
