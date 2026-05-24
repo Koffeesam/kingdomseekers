@@ -403,6 +403,39 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_teachings: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          session_date: string
+          title: string
+          updated_at: string
+          youtube_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          session_date?: string
+          title: string
+          updated_at?: string
+          youtube_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          session_date?: string
+          title?: string
+          updated_at?: string
+          youtube_id?: string
+        }
+        Relationships: []
+      }
       stories: {
         Row: {
           bg_color: string
