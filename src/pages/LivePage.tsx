@@ -1,17 +1,59 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Heart, MessageCircle, Send, ChevronDown, ChevronUp, Radio } from 'lucide-react';
+import { Heart, MessageCircle, Send, ChevronDown, ChevronUp, Radio, Plus, Trash2, Save } from 'lucide-react';
 import ksfLogo from '@/assets/ksf-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const CHANNEL_ID = 'UCvHvwe3wVCEibxBpFEs8oqw';
 
+interface SavedTeaching {
+  id: string;
+  title: string;
+  youtube_id: string;
+  session_date: string;
+  description: string | null;
+}
+
+function extractYouTubeId(input: string): string {
+  const trimmed = input.trim();
+  // Already an ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname.includes('youtu.be')) return url.pathname.slice(1);
+    const v = url.searchParams.get('v');
+    if (v) return v;
+    const parts = url.pathname.split('/');
+    const last = parts[parts.length - 1];
+    if (last && last.length === 11) return last;
+  } catch { /* not a URL */ }
+  return trimmed;
+}
+
 export default function LivePage() {
   const { teachings, setTeachings, isAdmin, session } = useApp();
   const [expandedTeaching, setExpandedTeaching] = useState<string | null>(null);
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [announcing, setAnnouncing] = useState(false);
+  const [saved, setSaved] = useState<SavedTeaching[]>([]);
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [savingForm, setSavingForm] = useState(false);
+  const [formTitle, setFormTitle] = useState('');
+  const [formVideo, setFormVideo] = useState('');
+  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [formDesc, setFormDesc] = useState('');
+
+  useEffect(() => {
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('saved_teachings')
+        .select('*')
+        .order('session_date', { ascending: false });
+      if (!error && data) setSaved(data as SavedTeaching[]);
+    };
+    load();
+  }, []);
 
   const today = new Date();
   const dayOfWeek = today.getDay();
@@ -34,6 +76,45 @@ export default function LivePage() {
     } else {
       toast.success('Believers have been notified');
     }
+  };
+
+  const handleSaveTeaching = async () => {
+    if (!session?.user) return;
+    const ytId = extractYouTubeId(formVideo);
+    if (!formTitle.trim() || !ytId) {
+      toast.error('Title and YouTube link/ID are required');
+      return;
+    }
+    setSavingForm(true);
+    const { data, error } = await supabase
+      .from('saved_teachings')
+      .insert({
+        title: formTitle.trim(),
+        youtube_id: ytId,
+        session_date: formDate,
+        description: formDesc.trim(),
+        created_by: session.user.id,
+      })
+      .select()
+      .single();
+    setSavingForm(false);
+    if (error) {
+      toast.error('Could not save teaching');
+      console.error(error);
+      return;
+    }
+    setSaved(prev => [data as SavedTeaching, ...prev]);
+    setFormTitle(''); setFormVideo(''); setFormDesc('');
+    setShowSaveForm(false);
+    toast.success('Sunday preach saved for rewatching 🙏');
+  };
+
+  const handleDeleteSaved = async (id: string) => {
+    if (!confirm('Remove this saved teaching?')) return;
+    const { error } = await supabase.from('saved_teachings').delete().eq('id', id);
+    if (error) { toast.error('Could not delete'); return; }
+    setSaved(prev => prev.filter(s => s.id !== id));
+    toast.success('Removed');
   };
 
   const toggleTeachingLike = (id: string) => {
@@ -137,8 +218,92 @@ export default function LivePage() {
           )}
         </div>
 
-        {/* Past Teachings */}
-        <h2 className="text-base font-display font-bold text-foreground mb-3">Past Teachings</h2>
+        {/* Saved Sunday Preaches Archive */}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-display font-bold text-foreground">Saved Sunday Preaches</h2>
+          {isAdmin && (
+            <button
+              onClick={() => setShowSaveForm(s => !s)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20"
+            >
+              <Plus size={14} />
+              {showSaveForm ? 'Close' : 'Save preach'}
+            </button>
+          )}
+        </div>
+
+        {isAdmin && showSaveForm && (
+          <div className="feed-card mb-4 space-y-2">
+            <input
+              value={formTitle}
+              onChange={e => setFormTitle(e.target.value)}
+              placeholder="Title (e.g. Sunday Service — Faith over fear)"
+              className="w-full bg-muted rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <input
+              value={formVideo}
+              onChange={e => setFormVideo(e.target.value)}
+              placeholder="YouTube link or video ID"
+              className="w-full bg-muted rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <input
+              type="date"
+              value={formDate}
+              onChange={e => setFormDate(e.target.value)}
+              className="w-full bg-muted rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <textarea
+              value={formDesc}
+              onChange={e => setFormDesc(e.target.value)}
+              placeholder="Short description (optional)"
+              rows={2}
+              className="w-full bg-muted rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+            />
+            <button
+              onClick={handleSaveTeaching}
+              disabled={savingForm}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-95 transition disabled:opacity-50"
+            >
+              <Save size={16} />
+              {savingForm ? 'Saving...' : 'Save for rewatch'}
+            </button>
+          </div>
+        )}
+
+        {saved.length === 0 && (
+          <p className="text-xs text-muted-foreground mb-4">No saved preaches yet. {isAdmin ? 'Add one above after a Sunday service.' : 'Check back after Sunday service 🙏'}</p>
+        )}
+
+        {saved.map(s => (
+          <div key={s.id} className="feed-card">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <h3 className="text-sm font-semibold text-foreground">{s.title}</h3>
+              {isAdmin && (
+                <button onClick={() => handleDeleteSaved(s.id)} className="text-muted-foreground hover:text-destructive shrink-0">
+                  <Trash2 size={15} />
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              {new Date(s.session_date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}
+            </p>
+            <div className="rounded-xl overflow-hidden aspect-video bg-foreground/5 mb-2">
+              <iframe
+                src={`https://www.youtube.com/embed/${s.youtube_id}`}
+                title={s.title}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            {s.description && <p className="text-xs text-foreground/80 whitespace-pre-line">{s.description}</p>}
+          </div>
+        ))}
+
+        {/* Past Teachings (legacy) */}
+        {teachings.length > 0 && (
+          <h2 className="text-base font-display font-bold text-foreground mb-3 mt-4">Past Teachings</h2>
+        )}
 
         {teachings.map(teaching => (
           <div key={teaching.id} className="feed-card">
