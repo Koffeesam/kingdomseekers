@@ -75,6 +75,19 @@ export default function LivePage() {
       console.error(error);
     } else {
       toast.success('Believers have been notified');
+      // Fire-and-forget: auto-create today's saved teaching so it archives itself.
+      supabase.functions.invoke('auto-save-teaching', {
+        body: { trigger: 'live', created_by: session.user.id },
+      }).then(({ data, error: fnErr }) => {
+        if (fnErr) { console.error('auto-save-teaching', fnErr); return; }
+        console.log('auto-save-teaching', data);
+        // Refresh archive list
+        supabase
+          .from('saved_teachings')
+          .select('*')
+          .order('session_date', { ascending: false })
+          .then(({ data: rows }) => { if (rows) setSaved(rows as SavedTeaching[]); });
+      });
     }
   };
 
