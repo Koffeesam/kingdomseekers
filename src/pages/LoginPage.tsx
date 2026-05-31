@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Cross, Sparkles } from 'lucide-react';
+import { Mail, Lock, User, Cross, Sparkles, Phone, AtSign } from 'lucide-react';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import ksfLogo from '@/assets/ksf-logo.png';
@@ -8,9 +8,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable';
 
 const signUpSchema = z.object({
-  username: z.string().trim().min(3, 'Username must be at least 3 characters').max(30),
+  fullName: z.string().trim().min(2, 'Please enter your full name').max(80),
+  phone: z.string().trim().min(7, 'Enter a valid phone number').max(20)
+    .regex(/^[+\d][\d\s()-]{6,}$/, 'Phone can contain digits, spaces, +, - and ()'),
+  username: z.string().trim().min(3, 'Username must be at least 3 characters').max(30)
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers and _'),
   email: z.string().trim().email('Enter a valid email').max(255),
   password: z.string().min(8, 'Password must be at least 8 characters').max(128),
+  confirmPassword: z.string().min(1, 'Please repeat your password'),
+}).refine(d => d.password === d.confirmPassword, {
+  message: 'Passwords do not match', path: ['confirmPassword'],
 });
 const signInSchema = z.object({
   email: z.string().trim().email('Enter a valid email').max(255),
@@ -22,7 +29,10 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
 
@@ -31,14 +41,19 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isSignUp) {
-        const parsed = signUpSchema.safeParse({ username, email, password });
+        const parsed = signUpSchema.safeParse({ fullName, phone, username, email, password, confirmPassword });
         if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }
         const { error } = await supabase.auth.signUp({
           email: parsed.data.email,
           password: parsed.data.password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
-            data: { username: parsed.data.username, display_name: parsed.data.username },
+            data: {
+              username: parsed.data.username,
+              display_name: parsed.data.fullName,
+              full_name: parsed.data.fullName,
+              phone: parsed.data.phone,
+            },
           },
         });
         if (error) {
@@ -47,6 +62,8 @@ export default function LoginPage() {
           return;
         }
         toast.success('Account created! Check your inbox to confirm your email. 🙏');
+        setIsSignUp(false);
+        setPassword(''); setConfirmPassword('');
       } else {
         const parsed = signInSchema.safeParse({ email, password });
         if (!parsed.success) { toast.error(parsed.error.errors[0].message); return; }
@@ -124,14 +141,32 @@ export default function LoginPage() {
           <div className="relative rounded-3xl bg-card/80 backdrop-blur-xl border border-border/60 shadow-2xl p-6">
             <form onSubmit={handleSubmit} className="space-y-3.5">
               {isSignUp && (
-                <div className="relative">
-                  <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="text" value={username} onChange={e => setUsername(e.target.value)}
-                    placeholder="Username" maxLength={30} autoComplete="username"
-                    className="w-full bg-muted/60 border border-border/60 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
-                  />
-                </div>
+                <>
+                  <div className="relative">
+                    <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text" value={fullName} onChange={e => setFullName(e.target.value)}
+                      placeholder="Full name" maxLength={80} autoComplete="name"
+                      className="w-full bg-muted/60 border border-border/60 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                      placeholder="Phone number" maxLength={20} autoComplete="tel"
+                      className="w-full bg-muted/60 border border-border/60 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
+                    />
+                  </div>
+                  <div className="relative">
+                    <AtSign size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text" value={username} onChange={e => setUsername(e.target.value)}
+                      placeholder="Username" maxLength={30} autoComplete="username"
+                      className="w-full bg-muted/60 border border-border/60 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
+                    />
+                  </div>
+                </>
               )}
 
               <div className="relative">
@@ -152,6 +187,16 @@ export default function LoginPage() {
                   className="w-full bg-muted/60 border border-border/60 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
                 />
               </div>
+              {isSignUp && (
+                <div className="relative">
+                  <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Repeat password" maxLength={128} autoComplete="new-password"
+                    className="w-full bg-muted/60 border border-border/60 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
+                  />
+                </div>
+              )}
 
               <button
                 type="submit" disabled={loading}
