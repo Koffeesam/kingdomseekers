@@ -31,8 +31,9 @@ Deno.serve(async (req) => {
 
     // Find a system / admin owner for created_by
     let createdBy: string | null = null
-    const { data: bodyData } = await req.json().catch(() => ({ data: null })) as any
-    if (bodyData?.created_by) createdBy = bodyData.created_by
+    let body: any = null
+    try { body = await req.json() } catch { body = null }
+    if (body?.created_by) createdBy = body.created_by
     if (!createdBy) {
       const { data: admins } = await supabase
         .from('user_roles')
