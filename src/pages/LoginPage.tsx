@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Cross, Sparkles, Phone, AtSign } from 'lucide-react';
+import { Mail, Lock, User, Cross, Sparkles, Phone, AtSign, KeyRound } from 'lucide-react';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import ksfLogo from '@/assets/ksf-logo.png';
@@ -35,6 +35,33 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
+  const [otpStage, setOtpStage] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+
+  const sendLoginCode = async (targetEmail: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: targetEmail,
+      options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/` },
+    });
+    if (error) { toast.error(error.message || 'Could not send the code'); return false; }
+    toast.success('We emailed you a 6-digit code 📩');
+    return true;
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(otpCode.trim())) { toast.error('Enter the 6-digit code'); return; }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: otpEmail, token: otpCode.trim(), type: 'email',
+      });
+      if (error) { toast.error('Invalid or expired code'); return; }
+      toast.success('Welcome home! 🕊️');
+      navigate('/', { replace: true });
+    } finally { setLoading(false); }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,8 +106,14 @@ export default function LoginPage() {
           } else toast.error(error.message);
           return;
         }
-        toast.success('Welcome home! 🕊️');
-        navigate('/', { replace: true });
+        // Password OK — require a one-time email code before granting access
+        await supabase.auth.signOut();
+        const sent = await sendLoginCode(parsed.data.email);
+        if (sent) {
+          setOtpEmail(parsed.data.email);
+          setOtpStage(true);
+          setPassword('');
+        }
       }
     } finally {
       setLoading(false);
@@ -129,16 +162,46 @@ export default function LoginPage() {
             <Cross size={12} />
           </div>
           <h1 className="text-3xl font-display font-bold text-center bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-transparent leading-tight">
-            {isSignUp ? 'Join the Fellowship' : 'Welcome Home'}
+            {otpStage ? 'Enter Your Code' : isSignUp ? 'Join the Fellowship' : 'Welcome Home'}
           </h1>
           <p className="text-xs text-muted-foreground mt-2 text-center max-w-[260px]">
-            {isSignUp ? 'Create an account to share your testimony and grow in faith.' : 'Sign in to continue your walk with the Kingdom community.'}
+            {otpStage
+              ? `We sent a 6-digit code to ${otpEmail}. Enter it below to enter the Sanctuary.`
+              : isSignUp ? 'Create an account to share your testimony and grow in faith.' : 'Sign in to continue your walk with the Kingdom community.'}
           </p>
         </div>
 
         <div className="relative">
           <div className="absolute -inset-px rounded-3xl bg-gradient-to-b from-primary/30 via-primary/10 to-transparent" aria-hidden="true" />
           <div className="relative rounded-3xl bg-card/80 backdrop-blur-xl border border-border/60 shadow-2xl p-6">
+            {otpStage ? (
+              <form onSubmit={handleVerifyCode} className="space-y-3.5">
+                <div className="relative">
+                  <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text" inputMode="numeric" pattern="\d{6}" maxLength={6} autoFocus autoComplete="one-time-code"
+                    value={otpCode} onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="6-digit code"
+                    className="w-full bg-muted/60 border border-border/60 rounded-2xl pl-11 pr-4 py-3.5 text-base tracking-[0.5em] text-center font-mono text-foreground placeholder:text-muted-foreground placeholder:tracking-normal placeholder:font-sans outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
+                  />
+                </div>
+                <button
+                  type="submit" disabled={loading}
+                  className="w-full py-3.5 rounded-2xl font-semibold text-sm gold-gradient text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50 transition-all active:scale-[0.98] hover:shadow-xl hover:shadow-primary/30 flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                      Verifying…
+                    </>
+                  ) : (<><Sparkles size={15} />Enter Sanctuary</>)}
+                </button>
+                <div className="flex items-center justify-between text-xs">
+                  <button type="button" onClick={() => { setOtpStage(false); setOtpCode(''); }} className="text-muted-foreground hover:text-foreground">← Back</button>
+                  <button type="button" onClick={() => sendLoginCode(otpEmail)} className="text-primary font-semibold hover:underline">Resend code</button>
+                </div>
+              </form>
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-3.5">
               {isSignUp && (
                 <>
@@ -215,7 +278,9 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
+            )}
 
+            {!otpStage && (<>
             <div className="flex items-center gap-3 my-4">
               <div className="flex-1 h-px bg-border" />
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">or continue with</span>
@@ -245,6 +310,7 @@ export default function LoginPage() {
                 {isSignUp ? 'Sign In' : 'Sign Up'}
               </button>
             </p>
+            </>)}
           </div>
         </div>
 

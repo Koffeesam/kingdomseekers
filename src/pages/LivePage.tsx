@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const CHANNEL_ID = 'UCvHvwe3wVCEibxBpFEs8oqw';
+// Uploads playlist = channel ID with UC → UU. Always plays the latest videos.
+const UPLOADS_PLAYLIST = 'UU' + CHANNEL_ID.slice(2);
 
 interface SavedTeaching {
   id: string;
@@ -211,23 +213,20 @@ export default function LivePage() {
               />
             </div>
           ) : (
-            <div className="rounded-xl bg-muted flex flex-col items-center justify-center py-12 px-4 text-center">
-              <img src={ksfLogo} alt="" className="w-16 h-16 opacity-30 mb-3" />
-              <p className="text-sm font-medium text-foreground">No live session today</p>
-              <p className="text-xs text-muted-foreground mt-1">Live teachings are streamed on Fridays & Sundays</p>
-              <div className="flex gap-2 mt-3">
-                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">Fri</span>
-                <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">Sun</span>
+            <>
+              <div className="rounded-xl overflow-hidden aspect-video bg-foreground/5">
+                <iframe
+                  src={`https://www.youtube.com/embed/videoseries?list=${UPLOADS_PLAYLIST}&rel=0`}
+                  title="KSF Thika Road — Latest Teachings"
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </div>
-              <a
-                href="https://www.youtube.com/@ksfthikaroad"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 px-4 py-2 rounded-xl bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
-              >
-                Visit YouTube Channel →
-              </a>
-            </div>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Watching the latest teaching from KSF Thika Road. Live streams every Fri & Sun 🙏
+              </p>
+            </>
           )}
         </div>
 
