@@ -5,6 +5,7 @@ import { MessageCircle, Loader2, Pencil, Upload as UploadIcon } from 'lucide-rea
 import FeedCard from '@/components/FeedCard';
 import EditProfileDialog from '@/components/EditProfileDialog';
 import AvatarViewer from '@/components/AvatarViewer';
+import FollowListDialog from '@/components/FollowListDialog';
 import { User } from '@/types';
 
 export default function ProfilePage() {
@@ -13,6 +14,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [followListMode, setFollowListMode] = useState<'followers' | 'following' | null>(null);
 
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -81,14 +83,20 @@ export default function ProfilePage() {
           {u.bio && <p className="text-sm text-muted-foreground mt-1">{u.bio}</p>}
 
           <div className="flex justify-center gap-8 mt-4">
-            <div className="text-center">
+            <button
+              onClick={() => setFollowListMode('followers')}
+              className="text-center hover:opacity-80 active:scale-95 transition"
+            >
               <p className="text-lg font-bold text-foreground">{followers}</p>
               <p className="text-xs text-muted-foreground">Followers</p>
-            </div>
-            <div className="text-center">
+            </button>
+            <button
+              onClick={() => setFollowListMode('following')}
+              className="text-center hover:opacity-80 active:scale-95 transition"
+            >
               <p className="text-lg font-bold text-foreground">{following}</p>
               <p className="text-xs text-muted-foreground">Following</p>
-            </div>
+            </button>
             <div className="text-center">
               <p className="text-lg font-bold text-foreground">{userPosts.length}</p>
               <p className="text-xs text-muted-foreground">Posts</p>
@@ -150,6 +158,17 @@ export default function ProfilePage() {
 
       {isOwnProfile && <EditProfileDialog open={editOpen} onOpenChange={setEditOpen} />}
       <AvatarViewer src={u.avatar} username={u.username} open={avatarOpen} onClose={() => setAvatarOpen(false)} />
+      <FollowListDialog
+        open={followListMode !== null}
+        onOpenChange={(v) => !v && setFollowListMode(null)}
+        userId={u.id}
+        mode={followListMode ?? 'followers'}
+        title={
+          followListMode === 'followers'
+            ? (isOwnProfile ? 'Your followers' : `${u.username}'s followers`)
+            : (isOwnProfile ? 'People you follow' : `${u.username} follows`)
+        }
+      />
     </div>
   );
 }
