@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Cross, Sparkles, Phone, AtSign } from 'lucide-react';
+import { Mail, Lock, User, Cross, Sparkles, Phone, AtSign, KeyRound } from 'lucide-react';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import ksfLogo from '@/assets/ksf-logo.png';
@@ -35,6 +35,33 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
+  const [otpStage, setOtpStage] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+
+  const sendLoginCode = async (targetEmail: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: targetEmail,
+      options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/` },
+    });
+    if (error) { toast.error(error.message || 'Could not send the code'); return false; }
+    toast.success('We emailed you a 6-digit code 📩');
+    return true;
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(otpCode.trim())) { toast.error('Enter the 6-digit code'); return; }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: otpEmail, token: otpCode.trim(), type: 'email',
+      });
+      if (error) { toast.error('Invalid or expired code'); return; }
+      toast.success('Welcome home! 🕊️');
+      navigate('/', { replace: true });
+    } finally { setLoading(false); }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,8 +106,14 @@ export default function LoginPage() {
           } else toast.error(error.message);
           return;
         }
-        toast.success('Welcome home! 🕊️');
-        navigate('/', { replace: true });
+        // Password OK — require a one-time email code before granting access
+        await supabase.auth.signOut();
+        const sent = await sendLoginCode(parsed.data.email);
+        if (sent) {
+          setOtpEmail(parsed.data.email);
+          setOtpStage(true);
+          setPassword('');
+        }
       }
     } finally {
       setLoading(false);
