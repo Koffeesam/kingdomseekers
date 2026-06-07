@@ -81,6 +81,13 @@ export default function TopNav() {
               )}
             </Link>
           ))}
+          <div className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-muted-foreground relative">
+            <HeartHandshake className="h-5 w-5 text-primary/60" />
+            <span>Giving &amp; Pledges</span>
+            <span className="ml-auto px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+              Coming Soon
+            </span>
+          </div>
         </nav>
 
         <div className="border-t border-border p-4">
