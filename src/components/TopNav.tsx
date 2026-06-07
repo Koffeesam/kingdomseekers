@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, BookOpen, MessageCircle, Sparkles, HandHeart, Settings, HelpCircle, LogOut, Camera, Calendar, ShieldCheck } from 'lucide-react';
+import { Menu, BookOpen, MessageCircle, Sparkles, HandHeart, Settings, HelpCircle, LogOut, Camera, Calendar, ShieldCheck, HeartHandshake } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/context/AppContext';
